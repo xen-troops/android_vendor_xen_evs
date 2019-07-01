@@ -86,7 +86,6 @@ private:
     sp<IVehicle>                mVehicle;
     sp<IEvsEnumerator>          mEvs;
     sp<IEvsDisplay>             mDisplay;
-    const ConfigManager&        mConfig;
 
     VehiclePropValue            mGearValue;
     VehiclePropValue            mTurnSignalValue;

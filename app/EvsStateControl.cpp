@@ -15,7 +15,6 @@
  */
 #include "EvsStateControl.h"
 #include "RenderDirectView.h"
-#include "RenderTopView.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -38,7 +37,6 @@ EvsStateControl::EvsStateControl(android::sp <IVehicle>       pVnet,
     mVehicle(pVnet),
     mEvs(pEvs),
     mDisplay(pDisplay),
-    mConfig(config),
     mCurrentState(OFF) {
 
     // Initialize the property value containers we'll be updating (they'll be zeroed by default)
@@ -236,7 +234,9 @@ bool EvsStateControl::selectStateForCurrentConditions() {
 
     // Choose our desired EVS state based on the current car state
     // TODO:  Update this logic, and consider user input when choosing if a view should be presented
-    State desiredState = OFF;
+
+    // temporary use REVERSE as default state in order to have camera active always
+    State desiredState = REVERSE;
     if (mGearValue.value.int32Values[0] == int32_t(VehicleGear::GEAR_REVERSE)) {
         desiredState = REVERSE;
     } else if (mTurnSignalValue.value.int32Values[0] == int32_t(VehicleTurnSignal::RIGHT)) {
@@ -288,24 +288,12 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
         mCurrentRenderer = nullptr; // It's a smart pointer, so destructs on assignment to null
     }
 
-    // Do we need a new direct view renderer?
-    if (mCameraList[desiredState].size() > 1 || desiredState == PARKING) {
-        // TODO:  DO we want other kinds of compound view or else sequentially selected views?
-        mCurrentRenderer = std::make_unique<RenderTopView>(mEvs,
-                                                           mCameraList[desiredState],
-                                                           mConfig);
-        if (!mCurrentRenderer) {
-            ALOGE("Failed to construct top view renderer.  Skipping state change.");
-            return false;
-        }
-    } else if (mCameraList[desiredState].size() == 1) {
-        // We have a camera assigned to this state for direct view
-        mCurrentRenderer = std::make_unique<RenderDirectView>(mEvs,
-                                                              mCameraList[desiredState][0]);
-        if (!mCurrentRenderer) {
-            ALOGE("Failed to construct direct renderer.  Skipping state change.");
-            return false;
-        }
+    // For simplicity we work with first camera only
+    mCurrentRenderer = std::make_unique<RenderDirectView>(mEvs,
+                                                          mCameraList[desiredState][0]);
+    if (!mCurrentRenderer) {
+        ALOGE("Failed to construct direct renderer.  Skipping state change.");
+        return false;
     }
 
     // Now set the display state based on whether we have a video feed to show

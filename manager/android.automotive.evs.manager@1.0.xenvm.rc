@@ -1,0 +1,6 @@
+service evs_manager /vendor/bin/android.automotive.evs.manager@1.0.xenvm
+    class hal
+    priority -20
+    user automotive_evs
+    group automotive_evs
+    onrestart restart evs_app

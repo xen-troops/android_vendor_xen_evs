@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2019 EPAM Systems Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +38,8 @@ static const unsigned MAX_BUFFERS_IN_FLIGHT = 100;
 
 EvsV4lCamera::EvsV4lCamera(const char *deviceName) :
         mFramesAllowed(0),
-        mFramesInUse(0) {
+        mFramesInUse(0),
+        mFillBufferFromVideo(NULL) {
     ALOGD("EvsV4lCamera instantiated");
 
     mDescription.cameraId = deviceName;
@@ -51,9 +53,9 @@ EvsV4lCamera::EvsV4lCamera(const char *deviceName) :
     // conversion?  Will this work with the hardware texture units?
     // TODO:  Settle on the one official format that works on all platforms
     // TODO:  Get NV21 working?  It is scrambled somewhere along the way right now.
-//    mFormat = HAL_PIXEL_FORMAT_YCRCB_420_SP;    // 420SP == NV21
-//    mFormat = HAL_PIXEL_FORMAT_RGBA_8888;
-    mFormat = HAL_PIXEL_FORMAT_YCBCR_422_I;
+    //mFormat = HAL_PIXEL_FORMAT_YCRCB_420_SP;    // 420SP == NV21
+    mFormat = HAL_PIXEL_FORMAT_RGBA_8888;
+    //mFormat = HAL_PIXEL_FORMAT_YCBCR_422_I;     // YUYV == YUY2
 
     // How we expect to use the gralloc buffers we'll exchange with our client
     mUsage  = GRALLOC_USAGE_HW_TEXTURE     |
@@ -133,6 +135,31 @@ Return<EvsResult> EvsV4lCamera::setMaxFramesInFlight(uint32_t bufferCount) {
     }
 }
 
+const char * HalPixelFormatToStr(uint32_t format) {
+    switch (format) {
+        case HAL_PIXEL_FORMAT_RGBA_8888: return "HAL_PIXEL_FORMAT_RGBA_8888";
+        case HAL_PIXEL_FORMAT_RGBX_8888: return "HAL_PIXEL_FORMAT_RGBX_8888";
+        case HAL_PIXEL_FORMAT_RGB_888: return "HAL_PIXEL_FORMAT_RGB_888";
+        case HAL_PIXEL_FORMAT_RGB_565: return "HAL_PIXEL_FORMAT_RGB_565";
+        case HAL_PIXEL_FORMAT_BGRA_8888: return "HAL_PIXEL_FORMAT_BGRA_8888";
+        case HAL_PIXEL_FORMAT_YCBCR_422_SP: return "HAL_PIXEL_FORMAT_YCBCR_422_SP";
+        case HAL_PIXEL_FORMAT_YCRCB_420_SP: return "HAL_PIXEL_FORMAT_YCRCB_420_SP";
+        case HAL_PIXEL_FORMAT_YCBCR_422_I: return "HAL_PIXEL_FORMAT_YCBCR_422_I";
+        case HAL_PIXEL_FORMAT_RGBA_FP16: return "HAL_PIXEL_FORMAT_RGBA_FP16";
+        case HAL_PIXEL_FORMAT_RAW16: return "HAL_PIXEL_FORMAT_RAW16";
+        case HAL_PIXEL_FORMAT_BLOB: return "HAL_PIXEL_FORMAT_BLOB";
+        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED: return "HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED";
+        case HAL_PIXEL_FORMAT_YCBCR_420_888: return "HAL_PIXEL_FORMAT_YCBCR_420_888";
+        case HAL_PIXEL_FORMAT_RAW_OPAQUE: return "HAL_PIXEL_FORMAT_RAW_OPAQUE";
+        case HAL_PIXEL_FORMAT_RAW10: return "HAL_PIXEL_FORMAT_RAW10";
+        case HAL_PIXEL_FORMAT_RAW12: return "HAL_PIXEL_FORMAT_RAW12";
+        case HAL_PIXEL_FORMAT_RGBA_1010102: return "HAL_PIXEL_FORMAT_RGBA_1010102";
+        case HAL_PIXEL_FORMAT_Y8: return "HAL_PIXEL_FORMAT_Y8";
+        case HAL_PIXEL_FORMAT_Y16: return "HAL_PIXEL_FORMAT_Y16";
+        case HAL_PIXEL_FORMAT_YV12: return "HAL_PIXEL_FORMAT_YV12";
+        default: return "unknown";
+    }
+}
 
 Return<EvsResult> EvsV4lCamera::startVideoStream(const ::android::sp<IEvsCameraStream>& stream)  {
     ALOGD("startVideoStream");
@@ -151,7 +178,7 @@ Return<EvsResult> EvsV4lCamera::startVideoStream(const ::android::sp<IEvsCameraS
     // If the client never indicated otherwise, configure ourselves for a single streaming buffer
     if (mFramesAllowed < 1) {
         if (!setAvailableFrames_Locked(1)) {
-            ALOGE("Failed to start stream because we couldn't get a graphics buffer");
+            ALOGE("Failed to start stream because we couldn't get a camera buffer");
             return EvsResult::BUFFER_NOT_AVAILABLE;
         }
     }
@@ -159,8 +186,8 @@ Return<EvsResult> EvsV4lCamera::startVideoStream(const ::android::sp<IEvsCameraS
     // Choose which image transfer function we need
     // Map from V4L2 to Android graphic buffer format
     const uint32_t videoSrcFormat = mVideo.getV4LFormat();
-    ALOGI("Configuring to accept %4.4s camera data and convert to %4.4s",
-          (char*)&videoSrcFormat, (char*)&mFormat);
+    ALOGI("Configuring to accept %4.4s camera data and convert to %s",
+          (char*)&videoSrcFormat, HalPixelFormatToStr(mFormat));
 
     // TODO:  Simplify this by supporting only ONE fixed output format
     switch (mFormat) {
@@ -363,7 +390,7 @@ unsigned EvsV4lCamera::increaseAvailableFrames_Locked(unsigned numToAdd) {
                                          mUsage,
                                          &memHandle, &pixelsPerLine, 0, "EvsV4lCamera");
         if (result != NO_ERROR) {
-            ALOGE("Error %d allocating %d x %d graphics buffer",
+            ALOGE("Error %d allocating %d x %d camera buffer",
                   result,
                   mVideo.getWidth(),
                   mVideo.getHeight());
@@ -437,6 +464,12 @@ void EvsV4lCamera::forwardFrame(imageBuffer* /*pV4lBuff*/, void* pData) {
     bool readyForFrame = false;
     size_t idx = 0;
 
+//    ALOGI("forwardFrame(pData:%p)", pData);
+//    unsigned char *p = (unsigned char *)pData;
+//    ALOGI("(%02x%02x%02x%02x %02x%02x%02x%02x - %02x%02x%02x%02x %02x%02x%02x%02x)",
+//            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
+//            p[8+0], p[8+1], p[8+2], p[8+3], p[8+4], p[8+5], p[8+6], p[8+7]);
+
     // Lock scope for updating shared state
     {
         std::lock_guard<std::mutex> lock(mAccessLock);
@@ -468,7 +501,7 @@ void EvsV4lCamera::forwardFrame(imageBuffer* /*pV4lBuff*/, void* pData) {
     }
 
     if (!readyForFrame) {
-        // We need to return the vide buffer so it can capture a new frame
+        // We need to return the video buffer so it can capture a new frame
         mVideo.markFrameConsumed();
     } else {
         // Assemble the buffer description we'll transmit below
@@ -494,6 +527,14 @@ void EvsV4lCamera::forwardFrame(imageBuffer* /*pV4lBuff*/, void* pData) {
             ALOGE("Camera failed to gain access to image buffer for writing");
         }
 
+#if DEBUG_TIME_MEASUREMENT
+        int64_t t1;
+        int64_t t2;
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        t1 = (int64_t) now.tv_sec*1000000000LL + now.tv_nsec;
+#endif /* DEBUG_TIME_MEASUREMENT */
+
         // Transfer the video image into the output buffer, making any needed
         // format conversion along the way
         mFillBufferFromVideo(buff, (uint8_t*)targetPixels, pData, mVideo.getStride());
@@ -501,6 +542,11 @@ void EvsV4lCamera::forwardFrame(imageBuffer* /*pV4lBuff*/, void* pData) {
         // Unlock the output buffer
         mapper.unlock(buff.memHandle);
 
+#if DEBUG_TIME_MEASUREMENT
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        t2 = (int64_t) now.tv_sec*1000000000LL + now.tv_nsec;
+        ALOGD("Time spent: %ld", t2-t1);
+#endif /* DEBUG_TIME_MEASUREMENT */
 
         // Give the video frame back to the underlying device for reuse
         // Note that we do this before making the client callback to give the underlying
@@ -509,9 +555,7 @@ void EvsV4lCamera::forwardFrame(imageBuffer* /*pV4lBuff*/, void* pData) {
 
         // Issue the (asynchronous) callback to the client -- can't be holding the lock
         auto result = mStream->deliverFrame(buff);
-        if (result.isOk()) {
-            ALOGD("Delivered %p as id %d", buff.memHandle.getNativeHandle(), buff.bufferId);
-        } else {
+        if (!result.isOk()) {
             // This can happen if the client dies and is likely unrecoverable.
             // To avoid consuming resources generating failing calls, we stop sending
             // frames.  Note, however, that the stream remains in the "STREAMING" state

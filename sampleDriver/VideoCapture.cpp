@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2019 EPAM Systems Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,9 +93,9 @@ bool VideoCapture::open(const char* deviceName) {
     // Set our desired output format
     v4l2_format format;
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY; // Could/should we request V4L2_PIX_FMT_NV21?
-    format.fmt.pix.width = 720;                     // TODO:  Can we avoid hard coding dimensions?
-    format.fmt.pix.height = 240;                    // For now, this works with available hardware
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; // Could/should we request V4L2_PIX_FMT_NV21?
+    format.fmt.pix.width = 640;                     // TODO:  Can we avoid hard coding dimensions?
+    format.fmt.pix.height = 480;                    // For now, this works with available hardware
     format.fmt.pix.field = V4L2_FIELD_ALTERNATE;    // TODO:  Do we need to specify this?
     ALOGI("Requesting format %c%c%c%c (0x%08X)",
           ((char*)&format.fmt.pix.pixelformat)[0],
@@ -147,6 +148,7 @@ void VideoCapture::close() {
     }
 }
 
+#define NUMBER_OF_BUFFERS_USED 2
 
 bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, void*)> callback) {
     // Set the state of our background thread
@@ -161,46 +163,50 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
     v4l2_requestbuffers bufrequest;
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     bufrequest.memory = V4L2_MEMORY_MMAP;
-    bufrequest.count = 1;
+    bufrequest.count = NUMBER_OF_BUFFERS_USED;
     if (ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest) < 0) {
         ALOGE("VIDIOC_REQBUFS: %s", strerror(errno));
         return false;
     }
 
-    // Get the information on the buffer that was created for us
-    memset(&mBufferInfo, 0, sizeof(mBufferInfo));
-    mBufferInfo.type     = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    mBufferInfo.memory   = V4L2_MEMORY_MMAP;
-    mBufferInfo.index    = 0;
-    if (ioctl(mDeviceFd, VIDIOC_QUERYBUF, &mBufferInfo) < 0) {
-        ALOGE("VIDIOC_QUERYBUF: %s", strerror(errno));
-        return false;
-    }
+    unsigned int i;
+    for (i = 0; i < NUMBER_OF_BUFFERS_USED; i++) {
+        // Get the information on the buffer that was created for us
+        memset(&mBufferInfo, 0, sizeof(mBufferInfo));
+        mBufferInfo.type     = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        mBufferInfo.memory   = V4L2_MEMORY_MMAP;
+        mBufferInfo.index    = i;
+        if (ioctl(mDeviceFd, VIDIOC_QUERYBUF, &mBufferInfo) < 0) {
+            ALOGE("VIDIOC_QUERYBUF: %s", strerror(errno));
+            return false;
+        }
 
-    ALOGI("Buffer description:");
-    ALOGI("  offset: %d", mBufferInfo.m.offset);
-    ALOGI("  length: %d", mBufferInfo.length);
+        ALOGI("Buffer description:");
+        ALOGI("  index: %d", mBufferInfo.index);
+        ALOGI("  offset: %d", mBufferInfo.m.offset);
+        ALOGI("  length: %d", mBufferInfo.length);
 
-    // Get a pointer to the buffer contents by mapping into our address space
-    mPixelBuffer = mmap(
-            NULL,
-            mBufferInfo.length,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            mDeviceFd,
-            mBufferInfo.m.offset
-    );
-    if( mPixelBuffer == MAP_FAILED) {
-        ALOGE("mmap: %s", strerror(errno));
-        return false;
-    }
-    memset(mPixelBuffer, 0, mBufferInfo.length);
-    ALOGI("Buffer mapped at %p", mPixelBuffer);
+        // Get a pointer to the buffer contents by mapping into our address space
+        mPixelBuffer = mmap(
+                NULL,
+                mBufferInfo.length,
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED,
+                mDeviceFd,
+                mBufferInfo.m.offset
+        );
+        if( mPixelBuffer == MAP_FAILED) {
+            ALOGE("mmap: %s", strerror(errno));
+            return false;
+        }
+        memset(mPixelBuffer, 0, mBufferInfo.length);
+        ALOGI("Buffer mapped at %p", mPixelBuffer);
 
-    // Queue the first capture buffer
-    if (ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfo) < 0) {
-        ALOGE("VIDIOC_QBUF: %s", strerror(errno));
-        return false;
+        // Queue the first capture buffer
+        if (ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfo) < 0) {
+            ALOGE("VIDIOC_QBUF: %s", strerror(errno));
+            return false;
+        }
     }
 
     // Start the video stream

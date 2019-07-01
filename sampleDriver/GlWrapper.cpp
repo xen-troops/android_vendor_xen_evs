@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2019 EPAM Systems Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +48,32 @@ const char vertexShaderSource[] = ""
         "   uv = tex;                       \n"
         "}                                  \n";
 
+#if COLOR_CONVERSION_BY_SHADER
+
+const char pixelShaderSource[] =
+        "#version 300 es                     \n"
+        "precision mediump float;            \n"
+        "uniform sampler2D tex;              \n"
+        "in vec2 uv;                         \n"
+        "out vec4 color;                     \n"
+        "float y1, y2, u, v, r, g, b;        \n"
+        "void main()                         \n"
+        "{                                   \n"
+        "    vec4 texel = texture(tex, uv);  \n"
+        "    y1 = texel[0];                  \n"
+        "    u = texel[1] - 0.5;             \n"
+        "    y2 = texel[2];                  \n"
+        "    v = texel[3] - 0.5;             \n"
+
+        "    r = y1 + 1.13983*v;             \n"
+        "    g = y1 - 0.39465*u - 0.58060*v; \n"
+        "    b = y1 + 2.03211*u;             \n"
+
+        "    color = vec4(r, g, b, 1.0);     \n"
+        "} \n";
+
+#else /* COLOR_CONVERSION_BY_SHADER */
+
 const char pixelShaderSource[] =
         "#version 300 es                            \n"
         "precision mediump float;                   \n"
@@ -59,6 +86,7 @@ const char pixelShaderSource[] =
         "    color = texel;                         \n"
         "}                                          \n";
 
+#endif /* COLOR_CONVERSION_BY_SHADER */
 
 static const char *getEGLError(void) {
     switch (eglGetError()) {
@@ -253,6 +281,7 @@ bool GlWrapper::initialize() {
 
     const EGLint config_attribs[] = {
             // Tag                  Value
+            EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
             EGL_RED_SIZE,           8,
             EGL_GREEN_SIZE,         8,
             EGL_BLUE_SIZE,          8,
@@ -395,10 +424,13 @@ bool GlWrapper::updateImageTexture(const BufferDesc& buffer) {
             return false;
         }
 
-
         // Update the texture handle we already created to refer to this gralloc buffer
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, mTextureMap);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, static_cast<GLeglImageOES>(mKHRimage));
 
     }
