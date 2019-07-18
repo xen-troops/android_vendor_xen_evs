@@ -96,7 +96,6 @@ bool VideoCapture::open(const char* deviceName) {
     format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV; // Could/should we request V4L2_PIX_FMT_NV21?
     format.fmt.pix.width = 640;                     // TODO:  Can we avoid hard coding dimensions?
     format.fmt.pix.height = 480;                    // For now, this works with available hardware
-    format.fmt.pix.field = V4L2_FIELD_ALTERNATE;    // TODO:  Do we need to specify this?
     ALOGI("Requesting format %c%c%c%c (0x%08X)",
           ((char*)&format.fmt.pix.pixelformat)[0],
           ((char*)&format.fmt.pix.pixelformat)[1],
@@ -199,7 +198,6 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
             ALOGE("mmap: %s", strerror(errno));
             return false;
         }
-        memset(mPixelBuffer, 0, mBufferInfo.length);
         ALOGI("Buffer mapped at %p", mPixelBuffer);
 
         // Queue the first capture buffer
