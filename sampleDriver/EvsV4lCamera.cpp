@@ -75,8 +75,6 @@ EvsV4lCamera::~EvsV4lCamera() {
 //
 void EvsV4lCamera::shutdown()
 {
-    ALOGD("EvsV4lCamera shutdown");
-
     // Make sure our output stream is cleaned up
     // (It really should be already)
     stopVideoStream();
@@ -103,8 +101,6 @@ void EvsV4lCamera::shutdown()
 
 // Methods from ::android::hardware::automotive::evs::V1_0::IEvsCamera follow.
 Return<void> EvsV4lCamera::getCameraInfo(getCameraInfo_cb _hidl_cb) {
-    ALOGD("getCameraInfo");
-
     // Send back our self description
     _hidl_cb(mDescription);
     return Void();
@@ -112,7 +108,6 @@ Return<void> EvsV4lCamera::getCameraInfo(getCameraInfo_cb _hidl_cb) {
 
 
 Return<EvsResult> EvsV4lCamera::setMaxFramesInFlight(uint32_t bufferCount) {
-    ALOGD("setMaxFramesInFlight");
     std::lock_guard<std::mutex> lock(mAccessLock);
 
     // If we've been displaced by another owner of the camera, then we can't do anything else
@@ -162,7 +157,6 @@ const char * HalPixelFormatToStr(uint32_t format) {
 }
 
 Return<EvsResult> EvsV4lCamera::startVideoStream(const ::android::sp<IEvsCameraStream>& stream)  {
-    ALOGD("startVideoStream");
     std::lock_guard<std::mutex> lock(mAccessLock);
 
     // If we've been displaced by another owner of the camera, then we can't do anything else
@@ -248,7 +242,6 @@ Return<EvsResult> EvsV4lCamera::startVideoStream(const ::android::sp<IEvsCameraS
 
 
 Return<void> EvsV4lCamera::doneWithFrame(const BufferDesc& buffer)  {
-    ALOGD("doneWithFrame");
     std::lock_guard <std::mutex> lock(mAccessLock);
 
     // If we've been displaced by another owner of the camera, then we can't do anything else
@@ -288,8 +281,6 @@ Return<void> EvsV4lCamera::doneWithFrame(const BufferDesc& buffer)  {
 
 
 Return<void> EvsV4lCamera::stopVideoStream()  {
-    ALOGD("stopVideoStream");
-
     // Tell the capture device to stop (and block until it does)
     mVideo.stopStream();
 
@@ -312,7 +303,6 @@ Return<void> EvsV4lCamera::stopVideoStream()  {
 
 
 Return<int32_t> EvsV4lCamera::getExtendedInfo(uint32_t /*opaqueIdentifier*/)  {
-    ALOGD("getExtendedInfo");
     // Return zero by default as required by the spec
     return 0;
 }
@@ -320,7 +310,6 @@ Return<int32_t> EvsV4lCamera::getExtendedInfo(uint32_t /*opaqueIdentifier*/)  {
 
 Return<EvsResult> EvsV4lCamera::setExtendedInfo(uint32_t /*opaqueIdentifier*/,
                                                 int32_t /*opaqueValue*/)  {
-    ALOGD("setExtendedInfo");
     std::lock_guard<std::mutex> lock(mAccessLock);
 
     // If we've been displaced by another owner of the camera, then we can't do anything else
