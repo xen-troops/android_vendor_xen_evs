@@ -21,6 +21,7 @@
 
 typedef v4l2_buffer imageBuffer;
 
+#define NUMBER_OF_BUFFERS_USED 2
 
 class VideoCapture {
 public:
@@ -52,7 +53,7 @@ private:
     int mDeviceFd = -1;
 
     v4l2_buffer mBufferInfo = {};
-    void* mPixelBuffer = nullptr;
+    void* mPixelBuffer[NUMBER_OF_BUFFERS_USED];
 
     __u32   mFormat = 0;
     __u32   mWidth  = 0;
