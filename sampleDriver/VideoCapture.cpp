@@ -147,7 +147,6 @@ void VideoCapture::close() {
     }
 }
 
-#define NUMBER_OF_BUFFERS_USED 2
 
 bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, void*)> callback) {
     // Set the state of our background thread
@@ -186,7 +185,7 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
         ALOGI("  length: %d", mBufferInfo.length);
 
         // Get a pointer to the buffer contents by mapping into our address space
-        mPixelBuffer = mmap(
+        mPixelBuffer[i] = mmap(
                 NULL,
                 mBufferInfo.length,
                 PROT_READ | PROT_WRITE,
@@ -194,11 +193,11 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
                 mDeviceFd,
                 mBufferInfo.m.offset
         );
-        if( mPixelBuffer == MAP_FAILED) {
+        if( mPixelBuffer[i] == MAP_FAILED) {
             ALOGE("mmap: %s", strerror(errno));
             return false;
         }
-        ALOGI("Buffer mapped at %p", mPixelBuffer);
+        ALOGI("Buffer mapped at %p", mPixelBuffer[i]);
 
         // Queue the first capture buffer
         if (ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfo) < 0) {
@@ -250,7 +249,12 @@ void VideoCapture::stopStream() {
     }
 
     // Unmap the buffers we allocated
-    munmap(mPixelBuffer, mBufferInfo.length);
+    for (int i = 0; i < NUMBER_OF_BUFFERS_USED; i++) {
+        int res = munmap(mPixelBuffer[i], mBufferInfo.length);
+        if (res != 0) {
+            ALOGE("munmap failed res:%d, errno:%d", res, errno);
+        }
+    }
 
     // Tell the L4V2 driver to release our streaming buffers
     v4l2_requestbuffers bufrequest;
@@ -297,7 +301,7 @@ void VideoCapture::collectFrames() {
 
         // If a callback was requested per frame, do that now
         if (mCallback) {
-            mCallback(this, &mBufferInfo, mPixelBuffer);
+            mCallback(this, &mBufferInfo, mPixelBuffer[mBufferInfo.index]);
         }
     }
 
