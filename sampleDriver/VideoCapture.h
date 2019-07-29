@@ -37,9 +37,6 @@ public:
     __u32   getStride()         { return mStride; };
     __u32   getV4LFormat()      { return mFormat; };
 
-    // NULL until stream is started
-    void* getLatestData()       { return mPixelBuffer; };
-
     bool isFrameReady()         { return mFrameReady; };
     void markFrameConsumed()    { returnFrame(); };
 
