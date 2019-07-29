@@ -35,6 +35,10 @@
 //        the file descriptor.  This must be fixed before using this code for anything but
 //        experimentation.
 bool VideoCapture::open(const char* deviceName) {
+    if (isOpen()) {
+        ALOGE("VideoCapture can not be open twice.");
+        return false;
+    }
     // If we want a polling interface for getting frames, we would use O_NONBLOCK
 //    int mDeviceFd = open(deviceName, O_RDWR | O_NONBLOCK, 0);
     mDeviceFd = ::open(deviceName, O_RDWR, 0);
@@ -50,6 +54,10 @@ bool VideoCapture::open(const char* deviceName) {
             ALOGE("failed to get device caps for %s (%d = %s)", deviceName, errno, strerror(errno));
             return false;
         }
+    }
+
+    for (int i = 0; i < NUMBER_OF_BUFFERS_USED; i++) {
+        mPixelBuffer[i] = 0;
     }
 
     // Report device properties
@@ -184,6 +192,10 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
         ALOGI("  offset: %d", mBufferInfo.m.offset);
         ALOGI("  length: %d", mBufferInfo.length);
 
+        if (mPixelBuffer[i] != 0) {
+            ALOGE("Error. Can't mmap, buffer is already in use.");
+            return false;
+        }
         // Get a pointer to the buffer contents by mapping into our address space
         mPixelBuffer[i] = mmap(
                 NULL,
@@ -195,6 +207,7 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
         );
         if( mPixelBuffer[i] == MAP_FAILED) {
             ALOGE("mmap: %s", strerror(errno));
+            mPixelBuffer[i] = 0;
             return false;
         }
         ALOGI("Buffer mapped at %p", mPixelBuffer[i]);
@@ -250,9 +263,12 @@ void VideoCapture::stopStream() {
 
     // Unmap the buffers we allocated
     for (int i = 0; i < NUMBER_OF_BUFFERS_USED; i++) {
-        int res = munmap(mPixelBuffer[i], mBufferInfo.length);
-        if (res != 0) {
-            ALOGE("munmap failed res:%d, errno:%d", res, errno);
+        if (mPixelBuffer[i] != 0) {
+            int res = munmap(mPixelBuffer[i], mBufferInfo.length);
+            if (res != 0) {
+                ALOGE("munmap failed res:%d, errno:%d", res, errno);
+            }
+            mPixelBuffer[i] = 0;
         }
     }
 
