@@ -16,6 +16,10 @@
 
 cc_binary {
 
+    name: "evs_app_xt",
+    vendor: true,
+    defaults: ["hidl_defaults"],
+
     srcs: [
         "evs_app.cpp",
         "EvsStateControl.cpp",
@@ -30,21 +34,28 @@ cc_binary {
         "WindowSurface.cpp",
         "FormatConvert.cpp",
     ],
+    header_libs: [
+        "libgui_headers",
+    ],
 
     shared_libs: [
+        "libbase",
+        "libbinder",
+        "libhidlbase",
         "libcutils",
         "liblog",
         "libutils",
         "libui",
-        "libgui",
-        "libhidlbase",
         "libhidltransport",
         "libEGL",
         "libGLESv2",
         "libhardware",
         "libpng",
+        "android.hidl.token@1.0-utils",
         "android.hardware.automotive.evs@1.0",
         "android.hardware.automotive.vehicle@2.0",
+        "android.hardware.graphics.bufferqueue@1.0",
+        "android.hardware.graphics.bufferqueue@2.0"
     ],
 
     static_libs: [
@@ -56,13 +67,10 @@ cc_binary {
 
     init_rc: ["evs_app_xt.rc"],
 
-    name: "evs_app_xt",
-
-    vendor: true,
-
     cflags: ["-DLOG_TAG=\"EvsApp\""] + [
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",
+        "-DNO_INPUT",
     ] + [
         "-Wall",
         "-Werror",

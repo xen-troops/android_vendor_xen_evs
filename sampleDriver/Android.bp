@@ -16,6 +16,10 @@
 
 cc_binary {
 
+    name: "android.hardware.automotive.evs@1.0.xenvm",
+    vendor: true,
+    defaults: ["hidl_defaults"],
+
     srcs: [
         "service.cpp",
         "EvsEnumerator.cpp",
@@ -26,33 +30,37 @@ cc_binary {
         "bufferCopy.cpp",
     ],
 
+    header_libs: [
+        "libgui_headers",
+    ],
+
     shared_libs: [
-        "android.hardware.automotive.evs@1.0",
-        "libui",
-        "libgui",
-        "libEGL",
-        "libGLESv2",
         "libbase",
         "libbinder",
-        "libcutils",
-        "libhardware",
         "libhidlbase",
-        "libhidltransport",
+        "libcutils",
         "liblog",
         "libutils",
+        "libui",
+        "libhidltransport",
+        "libEGL",
+        "libGLESv2",
+        "libhardware",
+        "libpng",
+        "android.hidl.token@1.0-utils",
+        "android.hardware.automotive.evs@1.0",
+        "android.hardware.automotive.vehicle@2.0",
+        "android.hardware.graphics.bufferqueue@1.0",
+        "android.hardware.graphics.bufferqueue@2.0",
     ],
 
     init_rc: ["android.hardware.automotive.evs@1.0.xenvm.rc"],
-
-    name: "android.hardware.automotive.evs@1.0.xenvm",
-
-    vendor: true,
-
     strip: {none:true},
 
     cflags: ["-DLOG_TAG=\"EvsSampleDriver\""] + [
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",
+        "-DNO_INPUT",
     ] + [
         "-Wall",
         "-Werror",
