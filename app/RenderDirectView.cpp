@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
- * Copyright (C) 2019 EPAM Systems Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +54,8 @@ bool RenderDirectView::activate() {
     if (!mTexture) {
         ALOGE("Failed to set up video texture for %s (%s)",
               mCameraInfo.cameraId.c_str(), mCameraInfo.function.c_str());
-        return false;
+// TODO:  For production use, we may actually want to fail in this case, but not yet...
+//       return false;
     }
 
     return true;
@@ -65,8 +65,9 @@ bool RenderDirectView::activate() {
 void RenderDirectView::deactivate() {
     // Release our video texture
     // We can't hold onto it because some other Render object might need the same camera
-    // TODO:  If start/stop costs become a problem, we could share video textures
-    mTexture.reset();
+    // TODO(b/131492626):  investigate whether sharing video textures can save
+    // the time.
+  mTexture = nullptr;
 }
 
 
@@ -93,9 +94,9 @@ bool RenderDirectView::drawFrame(const BufferDesc& tgtBuffer) {
 
     // Bind the texture and assign it to the shader's sampler
     mTexture->refresh();
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, mTexture->glId());
+
 
     GLint sampler = glGetUniformLocation(mShaderProgram, "tex");
     if (sampler < 0) {
@@ -133,8 +134,11 @@ bool RenderDirectView::drawFrame(const BufferDesc& tgtBuffer) {
     glDisableVertexAttribArray(1);
 
 
+    // Now that everything is submitted, release our hold on the texture resource
+    detachRenderTarget();
+
     // Wait for the rendering to finish
     glFinish();
-
+    detachRenderTarget();
     return true;
 }

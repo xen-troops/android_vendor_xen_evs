@@ -39,6 +39,7 @@ WindowSurface::WindowSurface() {
         fprintf(stderr, "ERROR: no internal display\n");
         return;
     }
+
     DisplayInfo mainDpyInfo;
     err = SurfaceComposerClient::getDisplayInfo(mainDpy, &mainDpyInfo);
     if (err != NO_ERROR) {

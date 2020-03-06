@@ -25,6 +25,8 @@ cc_binary {
         "EvsStateControl.cpp",
         "RenderBase.cpp",
         "RenderDirectView.cpp",
+        "RenderPixelCopy.cpp",
+        "RenderTopView.cpp",
         "ConfigManager.cpp",
         "glError.cpp",
         "shader.cpp",

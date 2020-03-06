@@ -129,6 +129,8 @@ void StreamHandler::doneWithFrame(const BufferDesc& buffer) {
 
 
 Return<void> StreamHandler::deliverFrame(const BufferDesc& buffer) {
+    ALOGD("Received a frame from the camera (%p)", buffer.memHandle.getNativeHandle());
+
     // Take the lock to protect our frame slots and running state variable
     {
         std::unique_lock <std::mutex> lock(mLock);
