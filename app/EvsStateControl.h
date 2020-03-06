@@ -86,6 +86,7 @@ private:
     sp<IVehicle>                mVehicle;
     sp<IEvsEnumerator>          mEvs;
     sp<IEvsDisplay>             mDisplay;
+    const ConfigManager&        mConfig;
 
     VehiclePropValue            mGearValue;
     VehiclePropValue            mTurnSignalValue;
@@ -94,6 +95,7 @@ private:
 
     std::vector<ConfigManager::CameraInfo>  mCameraList[NUM_STATES];
     std::unique_ptr<RenderBase> mCurrentRenderer;
+    std::unique_ptr<RenderBase> mDesiredRenderer;
 
     std::thread                 mRenderThread;  // The thread that runs the main rendering loop
 
