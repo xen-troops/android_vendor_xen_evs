@@ -1,5 +1,6 @@
-#service evs_app /vendor/bin/evs_app_xt
-#    class hal
-#    priority -20
-#    user automotive_evs
-#    group automotive_evs
+service evs_app_xt /vendor/bin/evs_app_xt --hw
+    class hal
+    priority -20
+    user automotive_evs
+    group automotive_evs
+    disabled
