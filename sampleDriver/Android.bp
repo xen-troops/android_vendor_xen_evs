@@ -17,7 +17,6 @@
 cc_binary {
 
     name: "android.hardware.automotive.evs@1.0.xenvm",
-    vendor: true,
     defaults: ["hidl_defaults"],
 
     srcs: [
@@ -45,6 +44,7 @@ cc_binary {
         "libhidltransport",
         "libEGL",
         "libGLESv2",
+        "libgui",
         "libhardware",
         "libpng",
         "android.hidl.token@1.0-utils",

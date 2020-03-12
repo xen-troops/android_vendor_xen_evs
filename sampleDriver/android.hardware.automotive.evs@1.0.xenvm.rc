@@ -1,4 +1,4 @@
-service evs_driver /vendor/bin/android.hardware.automotive.evs@1.0.xenvm
+service evs_driver /system/bin/android.hardware.automotive.evs@1.0.xenvm
     class hal
     priority -20
     user graphics
