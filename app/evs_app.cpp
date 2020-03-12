@@ -97,10 +97,12 @@ int main(int argc, char** argv)
 
     // Load our configuration information
     ConfigManager config;
-    if (!config.initialize("/vendor/etc/vehicle/evs_app_xt.json")) {
+    const char* configPath = "/vendor/etc/vehicle/evs_app_xt.json";
+    if (!config.initialize(configPath)) {
         ALOGE("Missing or improper configuration for the EVS application.  Exiting.");
         return 1;
     }
+    ALOGI("Used configuration file %s", configPath);
 
     // Set thread pool size to one to avoid concurrent events from the HAL.
     // This pool will handle the EvsCameraStream callbacks.
