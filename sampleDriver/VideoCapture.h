@@ -21,7 +21,7 @@
 
 typedef v4l2_buffer imageBuffer;
 
-#define NUMBER_OF_BUFFERS_USED 2
+#define NUMBER_OF_BUFFERS_USED 4
 
 class VideoCapture {
 public:

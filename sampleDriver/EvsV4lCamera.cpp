@@ -171,7 +171,7 @@ Return<EvsResult> EvsV4lCamera::startVideoStream(const ::android::sp<IEvsCameraS
 
     // If the client never indicated otherwise, configure ourselves for a single streaming buffer
     if (mFramesAllowed < 1) {
-        if (!setAvailableFrames_Locked(1)) {
+        if (!setAvailableFrames_Locked(NUMBER_OF_BUFFERS_USED)) {
             ALOGE("Failed to start stream because we couldn't get a camera buffer");
             return EvsResult::BUFFER_NOT_AVAILABLE;
         }
