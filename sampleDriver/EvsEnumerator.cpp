@@ -255,10 +255,9 @@ bool EvsEnumerator::qualifyCaptureDevice(const char* deviceName) {
                 case V4L2_PIX_FMT_NV16:     return true;
                 case V4L2_PIX_FMT_YVU420:   return true;
                 case V4L2_PIX_FMT_RGB32:    return true;
-#ifdef V4L2_PIX_FMT_ARGB32  // introduced with kernel v3.17
                 case V4L2_PIX_FMT_ARGB32:   return true;
                 case V4L2_PIX_FMT_XRGB32:   return true;
-#endif // V4L2_PIX_FMT_ARGB32
+                case V4L2_PIX_FMT_XBGR32:   return true;
                 default:                    break;
             }
         } else {
