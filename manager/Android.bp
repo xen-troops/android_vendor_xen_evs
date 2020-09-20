@@ -29,7 +29,6 @@ cc_binary {
         "libutils",
         "libui",
         "libhidlbase",
-        "libhidltransport",
         "libhardware",
         "android.hardware.automotive.evs@1.0",
     ],
