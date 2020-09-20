@@ -41,7 +41,6 @@ cc_binary {
         "liblog",
         "libutils",
         "libui",
-        "libhidltransport",
         "libEGL",
         "libGLESv2",
         "libgui",

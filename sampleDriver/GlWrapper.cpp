@@ -21,7 +21,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include <ui/DisplayInfo.h>
+#include <ui/DisplayConfig.h>
 #include <ui/GraphicBuffer.h>
 #include <ui/GraphicBufferAllocator.h>
 #include <ui/GraphicBufferMapper.h>
@@ -240,22 +240,15 @@ bool GlWrapper::initialize() {
         fprintf(stderr, "ERROR: no internal display\n");
         return false;
     }
-    DisplayInfo mainDpyInfo;
-    err = SurfaceComposerClient::getDisplayInfo(mainDpy, &mainDpyInfo);
+    DisplayConfig displayConfig;
+    err = SurfaceComposerClient::getActiveDisplayConfig(mainDpy, &displayConfig);
     if (err != NO_ERROR) {
         ALOGE("ERROR: unable to get display characteristics");
         return false;
     }
 
-    if (mainDpyInfo.orientation != DISPLAY_ORIENTATION_0 &&
-        mainDpyInfo.orientation != DISPLAY_ORIENTATION_180) {
-        // rotated
-        mWidth = mainDpyInfo.h;
-        mHeight = mainDpyInfo.w;
-    } else {
-        mWidth = mainDpyInfo.w;
-        mHeight = mainDpyInfo.h;
-    }
+    mWidth = displayConfig.resolution.width;
+    mHeight = displayConfig.resolution.height;
 
     mFlingerSurfaceControl = mFlinger->createSurface(
             String8("Evs Display"), mWidth, mHeight,
