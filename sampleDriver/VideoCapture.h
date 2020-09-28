@@ -13,19 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <atomic>
-#include <thread>
-#include <functional>
-#include <linux/videodev2.h>
+#ifndef ANDROID_HARDWARE_AUTOMOTIVE_EVS_V1_1_VIDEOCAPTURE_H
+#define ANDROID_HARDWARE_AUTOMOTIVE_EVS_V1_1_VIDEOCAPTURE_H
 
+#include <atomic>
+#include <functional>
+#include <set>
+#include <thread>
+
+#include <linux/videodev2.h>
 
 typedef v4l2_buffer imageBuffer;
 
-#define NUMBER_OF_BUFFERS_USED 4
 
 class VideoCapture {
 public:
-    bool open(const char* deviceName);
+    bool open(const char* deviceName, const int32_t width = 0, const int32_t height = 0);
     void close();
 
     bool startStream(std::function<void(VideoCapture*, imageBuffer*, void*)> callback = nullptr);
@@ -37,10 +40,17 @@ public:
     __u32   getStride()         { return mStride; };
     __u32   getV4LFormat()      { return mFormat; };
 
+    // NULL until stream is started
+    void* getLatestData()       { return mPixelBuffer; };
+
     bool isFrameReady()         { return mFrameReady; };
     void markFrameConsumed()    { returnFrame(); };
 
     bool isOpen()               { return mDeviceFd >= 0; };
+
+    int setParameter(struct v4l2_control& control);
+    int getParameter(struct v4l2_control& control);
+    std::set<uint32_t> enumerateCameraControls();
 
 private:
     void collectFrames();
@@ -50,7 +60,7 @@ private:
     int mDeviceFd = -1;
 
     v4l2_buffer mBufferInfo = {};
-    void* mPixelBuffer[NUMBER_OF_BUFFERS_USED];
+    void* mPixelBuffer = nullptr;
 
     __u32   mFormat = 0;
     __u32   mWidth  = 0;
@@ -71,3 +81,4 @@ private:
     };
 };
 
+#endif // ANDROID_HARDWARE_AUTOMOTIVE_EVS_V1_0_VIDEOCAPTURE_
