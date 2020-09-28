@@ -16,8 +16,8 @@
 
 //#################################
 cc_binary {
-    name: "evs_app",
-
+    name: "evs_app_xt",
+    vendor: true,
     srcs: [
         "evs_app.cpp",
         "EvsStateControl.cpp",
@@ -58,14 +58,12 @@ cc_binary {
     ],
 
     required: [
-        "config.json",
-        "CarFromTop.png",
-        "LabeledChecker.png",
+        "config.xt.json",
     ],
 
-    init_rc: ["evs_app.rc"],
+    init_rc: ["evs_app_xt.rc"],
 
-    cflags: ["-DLOG_TAG=\"EvsApp\""] + [
+    cflags: ["-DLOG_TAG=\"EvsAppXt\""] + [
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",
     ] + [
@@ -78,25 +76,9 @@ cc_binary {
 }
 
 prebuilt_etc {
-    name: "config.json",
-
-    src: "config.json",
-    sub_dir: "automotive/evs",
-
-}
-
-prebuilt_etc {
-    name: "CarFromTop.png",
-
-    src: "CarFromTop.png",
-    sub_dir: "automotive/evs",
-
-}
-
-prebuilt_etc {
-    name: "LabeledChecker.png",
-
-    src: "LabeledChecker.png",
+    name: "config.xt.json",
+    vendor: true,
+    src: "config.xt.json",
     sub_dir: "automotive/evs",
 
 }

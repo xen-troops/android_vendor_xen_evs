@@ -8,12 +8,7 @@
   },
   "displays" : [
     {
-      "displayPort" : 1,
-      "frontRange" : 100,
-      "rearRange" : 100
-    },
-    {
-      "displayPort" : 2,
+      "displayPort" : 11,
       "frontRange" : 100,
       "rearRange" : 100
     }
@@ -24,7 +19,7 @@
   },
   "cameras" : [
     {
-      "cameraId" : "/dev/video3",
+      "cameraId" : "/dev/video0",
       "function" : "reverse, park",
       "x" : 0.0,
       "y" : -40.0,

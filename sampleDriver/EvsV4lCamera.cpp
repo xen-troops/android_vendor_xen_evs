@@ -150,7 +150,7 @@ Return<EvsResult> EvsV4lCamera::startVideoStream(const sp<IEvsCameraStream_1_0>&
 
     // If the client never indicated otherwise, configure ourselves for a single streaming buffer
     if (mFramesAllowed < 1) {
-        if (!setAvailableFrames_Locked(1)) {
+        if (!setAvailableFrames_Locked(NUMBER_OF_BUFFERS_USED)) {
             LOG(ERROR) << "Failed to start stream because we couldn't get a graphics buffer";
             return EvsResult::BUFFER_NOT_AVAILABLE;
         }

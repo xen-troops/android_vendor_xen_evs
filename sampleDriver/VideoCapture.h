@@ -25,6 +25,7 @@
 
 typedef v4l2_buffer imageBuffer;
 
+#define NUMBER_OF_BUFFERS_USED 4
 
 class VideoCapture {
 public:
@@ -39,9 +40,6 @@ public:
     __u32   getHeight()         { return mHeight; };
     __u32   getStride()         { return mStride; };
     __u32   getV4LFormat()      { return mFormat; };
-
-    // NULL until stream is started
-    void* getLatestData()       { return mPixelBuffer; };
 
     bool isFrameReady()         { return mFrameReady; };
     void markFrameConsumed()    { returnFrame(); };
@@ -60,7 +58,7 @@ private:
     int mDeviceFd = -1;
 
     v4l2_buffer mBufferInfo = {};
-    void* mPixelBuffer = nullptr;
+    void* mPixelBuffer[NUMBER_OF_BUFFERS_USED];
 
     __u32   mFormat = 0;
     __u32   mWidth  = 0;
