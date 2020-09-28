@@ -150,7 +150,7 @@ EvsEnumerator::EvsEnumerator(sp<IAutomotiveDisplayProxyService> proxyService) {
     if (sConfigManager == nullptr) {
         /* loads and initializes ConfigManager in a separate thread */
         sConfigManager =
-            ConfigManager::Create("/vendor/etc/automotive/evs/evs_sample_configuration.xml");
+            ConfigManager::Create("/vendor/etc/automotive/evs/evs_xt_configuration.xml");
     }
 
     if (sDisplayProxy == nullptr) {
@@ -630,6 +630,7 @@ bool EvsEnumerator::qualifyCaptureDevice(const char* deviceName) {
                 case V4L2_PIX_FMT_ARGB32:   found = true; break;
                 case V4L2_PIX_FMT_XRGB32:   found = true; break;
 #endif // V4L2_PIX_FMT_ARGB32
+                case V4L2_PIX_FMT_XBGR32:   found = true; break;
                 default:
                     LOG(WARNING) << "Unsupported, "
                                  << std::hex << formatDescription.pixelformat;

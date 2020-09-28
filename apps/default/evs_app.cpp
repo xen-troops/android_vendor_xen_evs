@@ -170,7 +170,7 @@ int main(int argc, char** argv)
         printf("  --hw\n\tBypass EvsManager by connecting directly to EvsEnumeratorHw\n");
         printf("  --mock\n\tConnect directly to EvsEnumeratorHw-Mock\n");
         printf("  --display\n\tSpecify the display to use.  If this is not set, the first"
-                              "display in config.json's list will be used.\n");
+                              "display in config.xt.json's list will be used.\n");
         printf("  --extmem  <format>\n\t"
                "Application allocates buffers to capture camera frames.  "
                "Available format strings are (case insensitive):\n");
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
 
     // Load our configuration information
     ConfigManager config;
-    if (!config.initialize("/system/etc/automotive/evs/config.json")) {
+    if (!config.initialize("/vendor/etc/automotive/evs/config.xt.json")) {
         LOG(ERROR) << "Missing or improper configuration for the EVS application.  Exiting.";
         return EXIT_FAILURE;
     }

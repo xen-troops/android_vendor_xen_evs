@@ -17,7 +17,7 @@
 
 //#################################
 cc_binary {
-    name: "android.hardware.automotive.evs@1.1-sample",
+    name: "android.hardware.automotive.evs@1.1.xt",
 
     vendor: true,
 
@@ -56,9 +56,9 @@ cc_binary {
         "android.hardware.graphics.bufferqueue@2.0",
     ],
 
-    init_rc: ["android.hardware.automotive.evs@1.1-sample.rc"],
+    init_rc: ["android.hardware.automotive.evs@1.1.xt.rc"],
 
-    cflags: ["-DLOG_TAG=\"EvsSampleDriver\""] + [
+    cflags: ["-DLOG_TAG=\"EvsSampleDriverXt\""] + [
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",
     ] + [
@@ -69,8 +69,7 @@ cc_binary {
     ],
 
     required: [
-        "evs_configuration.dtd",
-        "evs_sample_configuration.xml",
+        "evs_xt_configuration.xml",
     ],
 
     include_dirs: [
@@ -86,12 +85,12 @@ cc_binary {
     },
 
     vintf_fragments: [
-        "manifest_android.hardware.automotive.evs@1.1.xml",
+        "manifest_android.hardware.automotive.evs@1.1.xt.xml",
     ],
 }
 
 cc_library{
-    name : "libevsconfigmanager",
+    name : "libevsconfigmanagerxt",
     vendor : true,
     srcs : [
         "ConfigManager.cpp",
@@ -111,15 +110,8 @@ cc_library{
 }
 
 prebuilt_etc {
-    name: "evs_configuration.dtd",
+    name: "evs_xt_configuration.xml",
     soc_specific: true,
-    src: "resources/evs_configuration.dtd",
-    sub_dir: "automotive/evs",
-}
-
-prebuilt_etc {
-    name: "evs_sample_configuration.xml",
-    soc_specific: true,
-    src: "resources/evs_sample_configuration.xml",
+    src: "resources/evs_xt_configuration.xml",
     sub_dir: "automotive/evs",
 }
