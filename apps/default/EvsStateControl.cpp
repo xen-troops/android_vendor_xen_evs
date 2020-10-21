@@ -287,7 +287,8 @@ StatusCode EvsStateControl::invokeGet(VehiclePropValue *pRequestedPropValue) {
 
 
 bool EvsStateControl::configureEvsPipeline(State desiredState) {
-    static bool isGlReady = false;
+    // Assuming that EVS will be launched after GL drivers
+    static bool isGlReady = true;
 
     if (mCurrentState == desiredState) {
         // Nothing to do here...
@@ -299,12 +300,12 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
                << " has " << mCameraList[mCurrentState].size() << " cameras";
     LOG(DEBUG) << "  Desired state " << desiredState
                << " has " << mCameraList[desiredState].size() << " cameras";
-
     if (!isGlReady && !isSfReady()) {
         // Graphics is not ready yet; using CPU renderer.
         if (mCameraList[desiredState].size() >= 1) {
             mDesiredRenderer = std::make_unique<RenderPixelCopy>(mEvs,
                                                                  mCameraList[desiredState][0]);
+            LOG(INFO) << "Used RenderPixelCopy";
             if (!mDesiredRenderer) {
                 LOG(ERROR) << "Failed to construct Pixel Copy renderer.  Skipping state change.";
                 return false;
@@ -322,6 +323,7 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
             mDesiredRenderer = std::make_unique<RenderDirectView>(mEvs,
                                                                   mCameraDescList[desiredState][0],
                                                                   mConfig);
+            LOG(INFO) << "Used RenderDirectView";
             if (!mDesiredRenderer) {
                 LOG(ERROR) << "Failed to construct direct renderer.  Skipping state change.";
                 return false;
