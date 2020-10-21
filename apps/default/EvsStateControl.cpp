@@ -32,11 +32,6 @@ using EvsDisplayState = ::android::hardware::automotive::evs::V1_0::DisplayState
 using BufferDesc_1_0  = ::android::hardware::automotive::evs::V1_0::BufferDesc;
 using BufferDesc_1_1  = ::android::hardware::automotive::evs::V1_1::BufferDesc;
 
-static bool isSfReady() {
-    const android::String16 serviceName("SurfaceFlinger");
-    return android::defaultServiceManager()->checkService(serviceName) != nullptr;
-}
-
 // TODO:  Seems like it'd be nice if the Vehicle HAL provided such helpers (but how & where?)
 inline constexpr VehiclePropertyType getPropType(VehicleProperty prop) {
     return static_cast<VehiclePropertyType>(
@@ -69,7 +64,7 @@ EvsStateControl::EvsStateControl(android::sp <IVehicle>       pVnet,
     LOG(DEBUG) << "Requesting camera list";
     mEvs->getCameraList_1_1(
         [this, &config](hidl_vec<CameraDesc> cameraList) {
-            LOG(INFO) << "Camera list callback received " << cameraList.size() << "cameras.";
+            LOG(INFO) << "Camera list callback received " << cameraList.size() << " cameras.";
             for (auto&& cam: cameraList) {
                 LOG(DEBUG) << "Found camera " << cam.v1.cameraId;
                 bool cameraConfigFound = false;
@@ -287,8 +282,6 @@ StatusCode EvsStateControl::invokeGet(VehiclePropValue *pRequestedPropValue) {
 
 
 bool EvsStateControl::configureEvsPipeline(State desiredState) {
-    static bool isGlReady = false;
-
     if (mCurrentState == desiredState) {
         // Nothing to do here...
         return true;
@@ -300,49 +293,31 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
     LOG(DEBUG) << "  Desired state " << desiredState
                << " has " << mCameraList[desiredState].size() << " cameras";
 
-    if (!isGlReady && !isSfReady()) {
-        // Graphics is not ready yet; using CPU renderer.
-        if (mCameraList[desiredState].size() >= 1) {
-            mDesiredRenderer = std::make_unique<RenderPixelCopy>(mEvs,
-                                                                 mCameraList[desiredState][0]);
-            if (!mDesiredRenderer) {
-                LOG(ERROR) << "Failed to construct Pixel Copy renderer.  Skipping state change.";
-                return false;
-            }
-        } else {
-            LOG(DEBUG) << "Unsupported, desiredState " << desiredState
-                       << " has " << mCameraList[desiredState].size() << " cameras.";
+    // Assumes that SurfaceFlinger is available always after being launched.
+
+    // Do we need a new direct view renderer?
+    if (mCameraList[desiredState].size() == 1) {
+        // We have a camera assigned to this state for direct view.
+        mDesiredRenderer = std::make_unique<RenderDirectView>(mEvs,
+                                                                mCameraDescList[desiredState][0],
+                                                                mConfig);
+        if (!mDesiredRenderer) {
+            LOG(ERROR) << "Failed to construct direct renderer.  Skipping state change.";
+            return false;
+        }
+    } else if (mCameraList[desiredState].size() > 1 || desiredState == PARKING) {
+        //TODO(b/140668179): RenderTopView needs to be updated to use new
+        //                   ConfigManager.
+        mDesiredRenderer = std::make_unique<RenderTopView>(mEvs,
+                                                            mCameraList[desiredState],
+                                                            mConfig);
+        if (!mDesiredRenderer) {
+            LOG(ERROR) << "Failed to construct top view renderer.  Skipping state change.";
+            return false;
         }
     } else {
-        // Assumes that SurfaceFlinger is available always after being launched.
-
-        // Do we need a new direct view renderer?
-        if (mCameraList[desiredState].size() == 1) {
-            // We have a camera assigned to this state for direct view.
-            mDesiredRenderer = std::make_unique<RenderDirectView>(mEvs,
-                                                                  mCameraDescList[desiredState][0],
-                                                                  mConfig);
-            if (!mDesiredRenderer) {
-                LOG(ERROR) << "Failed to construct direct renderer.  Skipping state change.";
-                return false;
-            }
-        } else if (mCameraList[desiredState].size() > 1 || desiredState == PARKING) {
-            //TODO(b/140668179): RenderTopView needs to be updated to use new
-            //                   ConfigManager.
-            mDesiredRenderer = std::make_unique<RenderTopView>(mEvs,
-                                                               mCameraList[desiredState],
-                                                               mConfig);
-            if (!mDesiredRenderer) {
-                LOG(ERROR) << "Failed to construct top view renderer.  Skipping state change.";
-                return false;
-            }
-        } else {
-            LOG(DEBUG) << "Unsupported, desiredState " << desiredState
-                       << " has " << mCameraList[desiredState].size() << " cameras.";
-        }
-
-        // GL renderer is now ready.
-        isGlReady = true;
+        LOG(DEBUG) << "Unsupported, desiredState " << desiredState
+                    << " has " << mCameraList[desiredState].size() << " cameras.";
     }
 
     // Since we're changing states, shut down the current renderer
