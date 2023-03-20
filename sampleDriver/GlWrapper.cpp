@@ -248,6 +248,7 @@ bool GlWrapper::initialize(sp<IAutomotiveDisplayProxyService> pWindowProxy,
 
     const EGLint config_attribs[] = {
             // Tag                  Value
+            EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT,
             EGL_RED_SIZE,           8,
             EGL_GREEN_SIZE,         8,
             EGL_BLUE_SIZE,          8,
