@@ -21,8 +21,8 @@ package {
 }
 
 cc_binary {
-    name: "android.hardware.automotive.evs@1.1-sample",
-
+    name: "android.hardware.automotive.evs@1.1-xt",
+    overrides: ["android.hardware.automotive.evs@1.1-sample"],
     vendor: true,
 
     srcs: [
@@ -61,7 +61,7 @@ cc_binary {
         "libyuv",
     ],
 
-    init_rc: ["android.hardware.automotive.evs@1.1-sample.rc"],
+    init_rc: ["android.hardware.automotive.evs@1.1-xt.rc"],
 
     cflags: ["-DLOG_TAG=\"EvsSampleDriver\""] + [
         "-DGL_GLEXT_PROTOTYPES",
@@ -91,40 +91,21 @@ cc_binary {
     },
 
     vintf_fragments: [
-        "manifest_android.hardware.automotive.evs@1.1.xml",
+        "manifest_android.hardware.automotive.evs@1.1-xt.xml",
     ],
 }
 
-cc_library{
-    name : "libevsconfigmanager",
-    vendor : true,
-    srcs : [
-        "ConfigManager.cpp",
-        "ConfigManagerUtil.cpp",
-    ],
-    shared_libs : [
-        "android.hardware.automotive.evs@1.0",
-        "android.hardware.automotive.evs@1.1",
-        "android.hardware.camera.device@3.2",
-        "libbase",
-        "libcamera_metadata",
-        "libcutils",
-        "libhardware",
-        "libtinyxml2",
-        "libutils",
-    ],
-}
 
-prebuilt_etc {
-    name: "evs_configuration.dtd",
-    soc_specific: true,
-    src: "resources/evs_configuration.dtd",
-    sub_dir: "automotive/evs",
-}
+//prebuilt_etc {
+//    name: "evs_configuration.dtd",
+//    soc_specific: true,
+//    src: "resources/evs_configuration.dtd",
+//    sub_dir: "automotive/evs",
+//}
 
-prebuilt_etc {
-    name: "evs_configuration.xml",
-    soc_specific: true,
-    src: "resources/evs_configuration_default.xml",
-    sub_dir: "automotive/evs",
-}
+//prebuilt_etc {
+//    name: "evs_configuration.xml",
+//    soc_specific: true,
+//    src: "resources/evs_configuration_default.xml",
+//    sub_dir: "automotive/evs",
+//}
