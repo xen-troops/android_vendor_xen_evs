@@ -37,7 +37,7 @@ namespace V1_1 {
 namespace implementation {
 
 // Default camera output image resolution
-const std::array<int32_t, 2> kDefaultResolution = {640, 480};
+const std::array<int32_t, 2> kDefaultResolution = {1280, 1080};
 
 // Arbitrary limit on number of graphics buffers allowed to be allocated
 // Safeguards against unreasonable resource consumption and provides a testable limit
