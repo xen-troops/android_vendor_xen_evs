@@ -91,7 +91,7 @@ bool VideoCapture::open(const char* deviceName, const int32_t width, const int32
     // Set our desired output format
     v4l2_format format;
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
     format.fmt.pix.width = width;
     format.fmt.pix.height = height;
     LOG(INFO) << "Requesting format: "
