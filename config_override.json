@@ -6,7 +6,7 @@
     "rearExtent" : 40
   },
   "displays" : [{
-	  "displayPort" : 1,
+	  "displayPort" : 0,
     "frontRange" : 100,
     "rearRange" : 100
   }],
