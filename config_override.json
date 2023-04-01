@@ -1,3 +1,4 @@
+
 {
   "car" : {
     "width"  : 76.7,
@@ -18,13 +19,58 @@
     {
       "cameraId" : "/dev/video0",
       "function" : "reverse,park",
-      "x" : 36.0,
+      "x" : 0.0,
+      "y" : 20.0,
+      "z" : 48,
+      "yaw" : 180,
+      "pitch" : -10,
+      "roll" : 0,
+      "hfov" : 115,
+      "vfov" : 80,
+      "hflip" : true,
+      "vflip" : false
+    },
+    {
+      "cameraId" : "/dev/video1",
+      "function" : "front,park",
+      "x" : 0.0,
+      "y" : 100.0,
+      "z" : 48,
+      "yaw" : 0,
+      "pitch" : -10,
+      "roll" : 0,
+      "hfov" : 115,
+      "vfov" : 80,
+      "hflip" : false,
+      "vflip" : false
+    },
+    {
+      "cameraId" : "/dev/video2",
+      "function" : "right,park",
+      "x" : -25.0,
       "y" : 60.0,
-      "z" : 32,
+      "z" : 88,
       "yaw" : -90,
-      "pitch" : -30,
+      "pitch" : -10,
+      "roll" : 0,
       "hfov" : 60,
-      "vfov" : 42
+      "vfov" : 62,
+      "hflip" : false,
+      "vflip" : false
+    },
+    {
+      "cameraId" : "/dev/video3",
+      "function" : "left, park",
+      "x" : 20.0,
+      "y" : 60.0,
+      "z" : 88,
+      "yaw" : 90,
+      "pitch" : -10,
+      "roll" : 0,
+      "hfov" : 60,
+      "vfov" : 62,
+      "hflip" : false,
+      "vflip" : false
     }
   ]
 }
