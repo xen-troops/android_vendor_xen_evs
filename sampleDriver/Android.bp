@@ -29,12 +29,14 @@ cc_binary {
         "service.cpp",
         "EvsEnumerator.cpp",
         "EvsV4lCamera.cpp",
+        "EvsStreamingCamera.cpp",
         "EvsGlDisplay.cpp",
         "GlWrapper.cpp",
         "VideoCapture.cpp",
         "bufferCopy.cpp",
         "ConfigManager.cpp",
         "ConfigManagerUtil.cpp",
+        "easywsclient.cpp"
     ],
 
     shared_libs: [
@@ -58,7 +60,8 @@ cc_binary {
         "libtinyxml2",
         "libui",
         "libutils",
-        "libyuv",
+        "libcutils",
+        "libyuv"
     ],
 
     init_rc: ["android.hardware.automotive.evs@1.1-xt.rc"],

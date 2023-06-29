@@ -44,8 +44,9 @@ namespace V1_1 {
 namespace implementation {
 
 
-class EvsV4lCamera;    // from EvsCamera.h
-class EvsGlDisplay;    // from EvsGlDisplay.h
+class EvsV4lCamera;             // from EvsCamera.h
+class EvsStreamingCamera;    // from EvsCamera.h
+class EvsGlDisplay;             // from EvsGlDisplay.h
 
 class EvsEnumerator : public IEvsEnumerator {
 public:
@@ -81,8 +82,9 @@ public:
 
 private:
     struct CameraRecord {
-        CameraDesc          desc;
-        wp<EvsV4lCamera>    activeInstance;
+        CameraDesc                desc;
+        wp<EvsV4lCamera>          activeInstance;
+        wp<EvsStreamingCamera>    activeStreamingInstance;
 
         CameraRecord(const char *cameraId) : desc() { desc.v1.cameraId = cameraId; }
     };
