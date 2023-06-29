@@ -16,6 +16,7 @@
 
 #include "EvsEnumerator.h"
 #include "EvsV4lCamera.h"
+#include "EvsStreamingCamera.h"
 #include "EvsGlDisplay.h"
 #include "ConfigManager.h"
 
@@ -55,6 +56,7 @@ uint64_t                                                     EvsEnumerator::sInt
 
 // Constants
 const auto kEnumerationTimeout = 10s;
+const std::string kStreamingCamera = "CarlaSim";
 
 
 bool EvsEnumerator::checkPermission() {
@@ -202,7 +204,18 @@ void EvsEnumerator::enumerateCameras() {
             }
         }
     }
-
+    
+    // Enumerate carla simulation cameras
+    const std::string kCarlaSimReverse = "CarlaSimReverse";
+    const std::string kCarlaSimFront   = "CarlaSimFront";
+    const std::string kCarlaSimLeft    = "CarlaSimLeft";
+    const std::string kCarlaSimRight   = "CarlaSimRight";
+    sCameraList.emplace(kCarlaSimReverse, kCarlaSimReverse.c_str());
+    sCameraList.emplace(kCarlaSimFront, kCarlaSimFront.c_str());
+    sCameraList.emplace(kCarlaSimLeft,  kCarlaSimLeft.c_str());
+    sCameraList.emplace(kCarlaSimRight, kCarlaSimRight.c_str());
+    captureCount +=4;
+    videoCount +=4;
     LOG(INFO) << "Found " << captureCount << " qualified video capture devices "
               << "of " << videoCount << " checked.";
 }
@@ -287,28 +300,47 @@ Return<sp<IEvsCamera_1_0>> EvsEnumerator::openCamera(const hidl_string& cameraId
         LOG(ERROR) << cameraId << " does not exist!";
         return nullptr;
     }
+ 
+    if (string::npos != std::string(cameraId.c_str()).find(kStreamingCamera)) {
+        LOG(INFO) << "Create streaming camera";
+        // Has this camera already been instantiated by another caller?
+        sp<EvsStreamingCamera> pActiveStreamingCamera = pRecord->activeStreamingInstance.promote();
+        if (pActiveStreamingCamera != nullptr) {
+            LOG(WARNING) << "Killing previous streaming camera because of new caller";
+            closeCamera(pActiveStreamingCamera);
+        }
 
-    // Has this camera already been instantiated by another caller?
-    sp<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.promote();
-    if (pActiveCamera != nullptr) {
-        LOG(WARNING) << "Killing previous camera because of new caller";
-        closeCamera(pActiveCamera);
-    }
+        pActiveStreamingCamera = EvsStreamingCamera::Create(cameraId.c_str());
+        pRecord->activeStreamingInstance = pActiveStreamingCamera;
+        if (pActiveStreamingCamera == nullptr) {
+            LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << cameraId;
+        }
 
-    // Construct a camera instance for the caller
-    if (sConfigManager == nullptr) {
-        pActiveCamera = EvsV4lCamera::Create(cameraId.c_str());
+        return pActiveStreamingCamera;
+
     } else {
-        pActiveCamera = EvsV4lCamera::Create(cameraId.c_str(),
-                                             sConfigManager->getCameraInfo(cameraId));
-    }
+        // Has this camera already been instantiated by another caller?
+        sp<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.promote();
+        if (pActiveCamera != nullptr) {
+            LOG(WARNING) << "Killing previous camera because of new caller";
+            closeCamera(pActiveCamera);
+        }
 
-    pRecord->activeInstance = pActiveCamera;
-    if (pActiveCamera == nullptr) {
-        LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << cameraId;
-    }
+        // Construct a camera instance for the caller
+        if (sConfigManager == nullptr) {
+            pActiveCamera = EvsV4lCamera::Create(cameraId.c_str());
+        } else {
+            pActiveCamera = EvsV4lCamera::Create(cameraId.c_str(),
+                                                sConfigManager->getCameraInfo(cameraId));
+        }
 
-    return pActiveCamera;
+        pRecord->activeInstance = pActiveCamera;
+        if (pActiveCamera == nullptr) {
+            LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << cameraId;
+        }
+
+        return pActiveCamera;
+    }
 }
 
 
@@ -432,7 +464,7 @@ Return<void> EvsEnumerator::getCameraList_1_1(getCameraList_1_1_cb _hidl_cb)  {
                      get_camera_metadata_size(tempInfo->characteristics)
                 );
             }
-
+            LOG(DEBUG) << __FUNCTION__  << "cam " << key;
             hidlCameras.emplace_back(cam.desc);
         }
 
@@ -454,6 +486,7 @@ Return<void> EvsEnumerator::getCameraList_1_1(getCameraList_1_1_cb _hidl_cb)  {
                 );
             }
 
+            LOG(DEBUG) << __FUNCTION__ << "cam1 " << id;
             sCameraList.emplace(id, cam);
             hidlCameras.emplace_back(cam.desc);
         }
@@ -481,33 +514,55 @@ Return<sp<IEvsCamera_1_1>> EvsEnumerator::openCamera_1_1(const hidl_string& came
         return nullptr;
     }
 
-    // Has this camera already been instantiated by another caller?
-    sp<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.promote();
-    if (pActiveCamera != nullptr) {
-        LOG(WARNING) << "Killing previous camera because of new caller";
-        closeCamera(pActiveCamera);
-    }
+    if (string::npos != std::string(cameraId.c_str()).find(kStreamingCamera)) {
+        LOG(INFO) << "Create streaming camera";
+        // Has this camera already been instantiated by another caller?
+        sp<EvsStreamingCamera> pActiveStreamingCamera = pRecord->activeStreamingInstance.promote();
+        if (pActiveStreamingCamera != nullptr) {
+            LOG(WARNING) << "Killing previous streaming camera because of new caller";
+            closeCamera(pActiveStreamingCamera);
+        }
 
-    // Construct a camera instance for the caller
-    if (sConfigManager == nullptr) {
-        LOG(WARNING) << "ConfigManager is not available.  "
-                     << "Given stream configuration is ignored.";
-        pActiveCamera = EvsV4lCamera::Create(cameraId.c_str());
+        pActiveStreamingCamera = EvsStreamingCamera::Create(cameraId.c_str(), 
+                                                            sConfigManager->getCameraInfo(cameraId),
+                                                            &streamCfg);
+        pRecord->activeStreamingInstance = pActiveStreamingCamera;
+        if (pActiveStreamingCamera == nullptr) {
+            LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << cameraId;
+        }
+
+        return pActiveStreamingCamera;
+
     } else {
-        pActiveCamera = EvsV4lCamera::Create(cameraId.c_str(),
-                                             sConfigManager->getCameraInfo(cameraId),
-                                             &streamCfg);
-    }
-    pRecord->activeInstance = pActiveCamera;
-    if (pActiveCamera == nullptr) {
-        LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << cameraId;
-    }
+        // Has this camera already been instantiated by another caller?
+        sp<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.promote();
+        if (pActiveCamera != nullptr) {
+            LOG(WARNING) << "Killing previous camera because of new caller";
+            closeCamera(pActiveCamera);
+        }
 
-    return pActiveCamera;
+        // Construct a camera instance for the caller
+        if (sConfigManager == nullptr) {
+            LOG(WARNING) << "ConfigManager is not available.  "
+                        << "Given stream configuration is ignored.";
+            pActiveCamera = EvsV4lCamera::Create(cameraId.c_str());
+        } else {
+            pActiveCamera = EvsV4lCamera::Create(cameraId.c_str(),
+                                                sConfigManager->getCameraInfo(cameraId),
+                                                &streamCfg);
+        }
+        pRecord->activeInstance = pActiveCamera;
+        if (pActiveCamera == nullptr) {
+            LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << cameraId;
+        }
+
+        return pActiveCamera;
+    }
 }
 
 
 Return<void> EvsEnumerator::getDisplayIdList(getDisplayIdList_cb _list_cb) {
+    LOG(DEBUG) << __FUNCTION__;
     hidl_vec<uint8_t> ids;
 
     if (sDisplayPortList.size() > 0) {
@@ -557,12 +612,31 @@ Return<sp<IEvsDisplay_1_1>> EvsEnumerator::openDisplay_1_1(uint8_t port) {
 
 void EvsEnumerator::closeCamera_impl(const sp<IEvsCamera_1_0>& pCamera,
                                      const std::string& cameraId) {
+    LOG(DEBUG) << __FUNCTION__;
     // Find the named camera
     CameraRecord *pRecord = findCameraById(cameraId);
 
     // Is the display being destroyed actually the one we think is active?
-    if (!pRecord) {
+    if (pRecord == nullptr) {
         LOG(ERROR) << "Asked to close a camera whose name isn't recognized";
+        return;
+    } 
+    
+    if (string::npos != kStreamingCamera.find(cameraId)) {
+        sp<EvsStreamingCamera> pActiveStreamingCamera = pRecord->activeStreamingInstance.promote();
+        if (pActiveStreamingCamera == nullptr) {
+            LOG(ERROR) << "Somehow a camera is being destroyed "
+                       << "when the enumerator didn't know one existed";
+        } else if (pActiveStreamingCamera != pCamera) {
+            // This can happen if the camera was aggressively reopened,
+            // orphaning this previous instance
+            LOG(WARNING) << "Ignoring close of previously orphaned camera "
+                         << "- why did a client steal?";
+        } else {
+            // Drop the active camera
+            pActiveStreamingCamera->shutdown();
+            pRecord->activeStreamingInstance = nullptr;
+        }
     } else {
         sp<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.promote();
 
@@ -586,6 +660,7 @@ void EvsEnumerator::closeCamera_impl(const sp<IEvsCamera_1_0>& pCamera,
 
 
 bool EvsEnumerator::qualifyCaptureDevice(const char* deviceName) {
+    LOG(DEBUG) << __FUNCTION__;
     class FileHandleWrapper {
     public:
         FileHandleWrapper(int fd)   { mFd = fd; }
@@ -649,6 +724,7 @@ bool EvsEnumerator::qualifyCaptureDevice(const char* deviceName) {
 
 
 EvsEnumerator::CameraRecord* EvsEnumerator::findCameraById(const std::string& cameraId) {
+    LOG(DEBUG) << __FUNCTION__;
     // Find the named camera
     auto found = sCameraList.find(cameraId);
     if (sCameraList.end() != found) {
@@ -663,6 +739,7 @@ EvsEnumerator::CameraRecord* EvsEnumerator::findCameraById(const std::string& ca
 
 // TODO(b/149874793): Add implementation for EVS Manager and Sample driver
 Return<void> EvsEnumerator::getUltrasonicsArrayList(getUltrasonicsArrayList_cb _hidl_cb) {
+    LOG(DEBUG) << __FUNCTION__;
     hidl_vec<UltrasonicsArrayDesc> ultrasonicsArrayDesc;
     _hidl_cb(ultrasonicsArrayDesc);
     return Void();
@@ -672,14 +749,15 @@ Return<void> EvsEnumerator::getUltrasonicsArrayList(getUltrasonicsArrayList_cb _
 // TODO(b/149874793): Add implementation for EVS Manager and Sample driver
 Return<sp<IEvsUltrasonicsArray>> EvsEnumerator::openUltrasonicsArray(
         const hidl_string& ultrasonicsArrayId) {
+    LOG(DEBUG) << __FUNCTION__;
     (void)ultrasonicsArrayId;
     return sp<IEvsUltrasonicsArray>();
 }
 
 
 // TODO(b/149874793): Add implementation for EVS Manager and Sample driver
-Return<void> EvsEnumerator::closeUltrasonicsArray(
-        const ::android::sp<IEvsUltrasonicsArray>& evsUltrasonicsArray)  {
+Return<void> EvsEnumerator::closeUltrasonicsArray(const ::android::sp<IEvsUltrasonicsArray>& evsUltrasonicsArray)  {
+    LOG(DEBUG) << __FUNCTION__;
     (void)evsUltrasonicsArray;
     return Void();
 }
