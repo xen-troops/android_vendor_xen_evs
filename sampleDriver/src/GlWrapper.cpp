@@ -242,6 +242,7 @@ bool GlWrapper::initialize(const std::shared_ptr<ICarDisplayProxy>& pWindowProxy
     const EGLint config_attribs[] = {
             // clang-format off
             // Tag          Value
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
             EGL_RED_SIZE,   8,
             EGL_GREEN_SIZE, 8,
             EGL_BLUE_SIZE,  8,
@@ -272,7 +273,7 @@ bool GlWrapper::initialize(const std::shared_ptr<ICarDisplayProxy>& pWindowProxy
     const EGLint context_attribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
     mContext = eglCreateContext(mDisplay, egl_config, EGL_NO_CONTEXT, context_attribs);
     if (mContext == EGL_NO_CONTEXT) {
-        LOG(ERROR) << "Failed to create OpenGL ES Context: " << getEGLError();
+        LOG(ERROR) << "Failed to create OpenGL ES 3 Context: " << getEGLError();
         return false;
     }
 

@@ -214,7 +214,7 @@ bool RenderBase::attachRenderTarget(const BufferDesc& tgtBuffer) {
 
     // We don't actually need the clear if we're going to cover the whole screen anyway
     // Clear the color buffer
-    glClearColor(0.8f, 0.1f, 0.2f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     return true;

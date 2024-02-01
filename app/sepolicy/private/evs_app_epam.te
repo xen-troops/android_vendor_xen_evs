@@ -1,0 +1,32 @@
+# evs app epam
+type evs_app_epam, domain, coredomain;
+hal_client_domain(evs_app_epam, hal_evs)
+hal_client_domain(evs_app_epam, hal_vehicle)
+hal_client_domain(evs_app_epam, hal_configstore)
+hal_client_domain(evs_app_epam, hal_graphics_allocator)
+
+# allow init to launch processes in this context
+type evs_app_epam_exec, exec_type, file_type, system_file_type;
+init_daemon_domain(evs_app_epam)
+
+# gets access to its own files on disk
+type evs_app_epam_files, file_type, system_file_type;
+allow evs_app_epam evs_app_epam_files:file { getattr open read };
+allow evs_app_epam evs_app_epam_files:dir search;
+
+# Allow use of gralloc buffers and EGL
+allow evs_app_epam gpu_device:chr_file rw_file_perms;
+allow evs_app_epam ion_device:chr_file r_file_perms;
+allow evs_app_epam system_file:dir r_dir_perms;
+allow evs_app_epam gpu_device:dir search;
+allow evs_app_epam self:process execmem;
+
+# Allow use of binder and find surfaceflinger
+binder_use(evs_app_epam);
+allow evs_app_epam surfaceflinger_service:service_manager find;
+
+# Allow get a list of available services
+allow evs_app_epam servicemanager:service_manager list;
+
+# Allow find evsmanagerd service
+allow evs_app_epam evsmanagerd_service:service_manager find;

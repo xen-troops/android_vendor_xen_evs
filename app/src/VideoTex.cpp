@@ -162,6 +162,9 @@ VideoTex* createVideoTexture(const std::shared_ptr<IEvsEnumerator>& pEnum, const
     }
 
     // Initialize the stream that will help us update this texture's contents
+    LOG(DEBUG) << "deviceName " << evsCameraId;
+    LOG(DEBUG) << "streamCfg->width " << streamCfg->width << "x" << streamCfg->height;
+    LOG(DEBUG) << "useExternalMemory " << useExternalMemory << " format " << format;
     pStreamHandler =
             ndk::SharedRefBase::make<StreamHandler>(pCamera, /* numBuffers= */ 2, useExternalMemory,
                                                     format, streamCfg->width, streamCfg->height);

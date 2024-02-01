@@ -22,6 +22,7 @@
 #include "VideoTex.h"
 
 #include <aidl/android/hardware/automotive/evs/BufferDesc.h>
+#include <aidl/android/hardware/automotive/evs/CameraDesc.h>
 #include <aidl/android/hardware/automotive/evs/IEvsEnumerator.h>
 #include <math/mat4.h>
 

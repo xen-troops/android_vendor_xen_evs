@@ -22,14 +22,22 @@
 #include "shader_projectedTex.h"
 #include "shader_simpleTex.h"
 
+
+#include <aidl/android/hardware/automotive/evs/CameraDesc.h>
+#include <aidl/android/hardware/automotive/evs/IEvsEnumerator.h>
+#include <aidl/android/hardware/automotive/evs/Stream.h>
+#include <aidl/android/hardware/graphics/common/PixelFormat.h>
+
 #include <android-base/logging.h>
 #include <math/mat4.h>
 #include <math/vec3.h>
+#include <system/camera_metadata.h>
 
 namespace {
 
 using aidl::android::hardware::automotive::evs::BufferDesc;
 using aidl::android::hardware::automotive::evs::IEvsEnumerator;
+using aidl::android::hardware::automotive::evs::Stream;
 
 // Simple aliases to make geometric math using vectors more readable
 const unsigned X = 0;
@@ -127,14 +135,14 @@ bool RenderTopView::activate() {
 
     // Load the checkerboard text image
     mTexAssets.checkerBoard.reset(
-            createTextureFromPng("/system/etc/automotive/evs/LabeledChecker.png"));
+            createTextureFromPng("/system/etc/automotive/evs/epam_LabeledChecker.png"));
     if (!mTexAssets.checkerBoard) {
         LOG(ERROR) << "Failed to load checkerboard texture";
         return false;
     }
 
     // Load the car image
-    mTexAssets.carTopView.reset(createTextureFromPng("/system/etc/automotive/evs/CarFromTop.png"));
+    mTexAssets.carTopView.reset(createTextureFromPng("/system/etc/automotive/evs/epam_CarFromTop.png"));
     if (!mTexAssets.carTopView) {
         LOG(ERROR) << "Failed to load carTopView texture";
         return false;
@@ -142,8 +150,17 @@ bool RenderTopView::activate() {
 
     // Set up streaming video textures for our associated cameras
     for (auto&& cam : mActiveCameras) {
+
+        std::unique_ptr<Stream> targetCfg(new Stream());
+        // This client always wants below input data format
+        targetCfg->format = aidl::android::hardware::graphics::common::PixelFormat::RGBA_8888;
+        targetCfg->framerate = 10;
+        targetCfg->width = 640;
+        targetCfg->height = 480;
+        targetCfg->id = 1;
+
         cam.tex.reset(
-                createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), nullptr, sDisplay));
+                createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), std::move(targetCfg), sDisplay));
         if (!cam.tex) {
             LOG(ERROR) << "Failed to set up video texture for " << cam.info.cameraId << " ("
                        << cam.info.function << ")";

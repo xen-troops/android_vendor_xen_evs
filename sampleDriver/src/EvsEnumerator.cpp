@@ -50,6 +50,7 @@ using ::ndk::ScopedAStatus;
 using std::chrono_literals::operator""s;
 
 // Constants
+const std::string kStreamingCamera = "CarlaSim";
 constexpr std::chrono::seconds kEnumerationTimeout = 10s;
 constexpr std::string_view kDevicePath = "/dev/";
 constexpr std::string_view kPrefix = "video";
@@ -134,7 +135,7 @@ void EvsEnumerator::EvsHotplugThread(std::shared_ptr<EvsEnumerator> service,
 }
 
 EvsEnumerator::EvsEnumerator(const std::shared_ptr<ICarDisplayProxy>& proxyService) {
-    LOG(DEBUG) << "EvsEnumerator is created.";
+    LOG(DEBUG) << "Epam EvsEnumerator is created.";
 
     if (!sConfigManager) {
         /* loads and initializes ConfigManager in a separate thread */
@@ -164,8 +165,8 @@ bool EvsEnumerator::checkPermission() {
 
 bool EvsEnumerator::addCaptureDevice(const std::string& deviceName) {
     if (!qualifyCaptureDevice(deviceName.data())) {
-        LOG(DEBUG) << deviceName << " is not qualified for this EVS HAL implementation";
-        return false;
+        LOG(ERROR) << deviceName << " is not qualified for this EVS HAL implementation";
+        //return false;
     }
 
     CameraRecord cam(deviceName.data());
@@ -173,6 +174,9 @@ bool EvsEnumerator::addCaptureDevice(const std::string& deviceName) {
         std::unique_ptr<ConfigManager::CameraInfo>& camInfo =
                 sConfigManager->getCameraInfo(deviceName);
         if (camInfo) {
+            LOG(DEBUG) << "Cam stream id " <<  camInfo->streamConfigurations[0].id
+                       << " config " << camInfo->streamConfigurations[0].width
+                       << "x" << camInfo->streamConfigurations[0].height;
             uint8_t* ptr = reinterpret_cast<uint8_t*>(camInfo->characteristics);
             const size_t len = get_camera_metadata_size(camInfo->characteristics);
             cam.desc.metadata.insert(cam.desc.metadata.end(), ptr, ptr + len);
@@ -228,6 +232,14 @@ void EvsEnumerator::enumerateCameras() {
             }
         }
     }
+
+    // Enumerate carla simulation cameras
+    addCaptureDevice("CarlaSimReverse");
+    addCaptureDevice("CarlaSimFront");
+    addCaptureDevice("CarlaSimLeft");
+    addCaptureDevice("CarlaSimRight");
+    captureCount +=4;
+    videoCount +=4;
 
     LOG(INFO) << "Found " << captureCount << " qualified video capture devices "
               << "of " << videoCount << " checked.";
@@ -369,28 +381,57 @@ ScopedAStatus EvsEnumerator::openCamera(const std::string& id, const Stream& cfg
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::INVALID_ARG));
     }
 
-    // Has this camera already been instantiated by another caller?
-    std::shared_ptr<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.lock();
-    if (pActiveCamera) {
-        LOG(WARNING) << "Killing previous camera because of new caller";
-        closeCamera(pActiveCamera);
-    }
+    if (std::string::npos != std::string(id.c_str()).find(kStreamingCamera)) {
+        LOG(INFO) << "Create streaming camera";
+        // Has this camera already been instantiated by another caller?
+        std::shared_ptr<EvsStreamingCamera> pActiveStreamingCamera = pRecord->activeStreamingInstance.lock();
+        if (pActiveStreamingCamera) {
+            LOG(WARNING) << "Killing previous streaming camera because of new caller";
+            closeCamera(pActiveStreamingCamera);
+        }
 
-    // Construct a camera instance for the caller
-    if (!sConfigManager) {
-        pActiveCamera = EvsV4lCamera::Create(id.data());
+        // Construct a camera instance for the caller
+        if (!sConfigManager) {
+            pActiveStreamingCamera = EvsStreamingCamera::Create(id.data());
+        } else {
+            pActiveStreamingCamera = 
+                EvsStreamingCamera::Create(id.data(), 
+                                           sConfigManager->getCameraInfo(id),
+                                           &cfg);
+        }
+
+        pRecord->activeStreamingInstance = pActiveStreamingCamera;
+        if (pActiveStreamingCamera == nullptr) {
+            LOG(ERROR) << "Failed to create new EvsStreamingCamera object for " << id;
+            return ScopedAStatus::fromServiceSpecificError(
+                    static_cast<int>(EvsResult::UNDERLYING_SERVICE_ERROR));
+        }
+
+        *obj = pActiveStreamingCamera;
     } else {
-        pActiveCamera = EvsV4lCamera::Create(id.data(), sConfigManager->getCameraInfo(id), &cfg);
-    }
+        // Has this camera already been instantiated by another caller?
+        std::shared_ptr<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.lock();
+        if (pActiveCamera) {
+            LOG(WARNING) << "Killing previous camera because of new caller";
+            closeCamera(pActiveCamera);
+        }
 
-    pRecord->activeInstance = pActiveCamera;
-    if (!pActiveCamera) {
-        LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << id;
-        return ScopedAStatus::fromServiceSpecificError(
-                static_cast<int>(EvsResult::UNDERLYING_SERVICE_ERROR));
-    }
+        // Construct a camera instance for the caller
+        if (!sConfigManager) {
+            pActiveCamera = EvsV4lCamera::Create(id.data());
+        } else {
+            pActiveCamera = EvsV4lCamera::Create(id.data(), sConfigManager->getCameraInfo(id), &cfg);
+        }
 
-    *obj = pActiveCamera;
+        pRecord->activeInstance = pActiveCamera;
+        if (!pActiveCamera) {
+            LOG(ERROR) << "Failed to create new EvsV4lCamera object for " << id;
+            return ScopedAStatus::fromServiceSpecificError(
+                    static_cast<int>(EvsResult::UNDERLYING_SERVICE_ERROR));
+        }
+
+        *obj = pActiveCamera;
+    }
     return ScopedAStatus::ok();
 }
 
@@ -571,7 +612,25 @@ void EvsEnumerator::closeCamera_impl(const std::shared_ptr<IEvsCamera>& pCamera,
     // Is the display being destroyed actually the one we think is active?
     if (!pRecord) {
         LOG(ERROR) << "Asked to close a camera whose name isn't recognized";
-    } else {
+        return;
+    } 
+
+    if (std::string::npos != kStreamingCamera.find(cameraId)) {
+        std::shared_ptr<EvsStreamingCamera> pActiveStreamingCamera = pRecord->activeStreamingInstance.lock();
+        if (pActiveStreamingCamera == nullptr) {
+            LOG(ERROR) << "Somehow a camera is being destroyed "
+                       << "when the enumerator didn't know one existed";
+        } else if (pActiveStreamingCamera != pCamera) {
+            // This can happen if the camera was aggressively reopened,
+            // orphaning this previous instance
+            LOG(WARNING) << "Ignoring close of previously orphaned camera "
+                         << "- why did a client steal?";
+        } else {
+            // Drop the active camera
+            pActiveStreamingCamera->shutdown();
+        }
+    }
+    else {
         std::shared_ptr<EvsV4lCamera> pActiveCamera = pRecord->activeInstance.lock();
         if (!pActiveCamera) {
             LOG(WARNING) << "Somehow a camera is being destroyed "
