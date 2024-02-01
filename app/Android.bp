@@ -20,7 +20,7 @@ package {
 }
 
 cc_binary {
-    name: "evs_app",
+    name: "evs_app_epam",
     defaults: [
         "android.hardware.graphics.common-ndk_shared",
         "vhalclient_defaults",
@@ -36,7 +36,7 @@ cc_binary {
         "libbinder",
         "libbinder_ndk",
         "libcamera_metadata",
-        "libcartelemetry-evs-proto",
+        "libcartelemetry-epam-evs-proto",
         "libcutils",
         "libhardware",
         "libpng",
@@ -54,13 +54,13 @@ cc_binary {
         "libvhalclient",
     ],
     required: [
-        "config.json",
-        "CarFromTop.png",
-        "LabeledChecker.png",
+        "epam_config.json",
+        "epam_CarFromTop.png",
+        "epam_LabeledChecker.png",
     ],
-    init_rc: ["evs_app.rc"],
+    init_rc: ["evs_app_epam.rc"],
     cflags: [
-        "-DLOG_TAG=\"EvsApp\"",
+        "-DLOG_TAG=\"EvsAppEpam\"",
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",
         "-Wall",
@@ -71,7 +71,7 @@ cc_binary {
 }
 
 cc_library {
-    name: "libcartelemetry-evs-proto",
+    name: "libcartelemetry-epam-evs-proto",
     srcs: [":cartelemetry-evs-proto-srcs"],
     proto: {
         export_proto_headers: true,
@@ -81,19 +81,19 @@ cc_library {
 }
 
 prebuilt_etc {
-    name: "config.json",
+    name: "epam_config.json",
     src: "res/config.json",
     sub_dir: "automotive/evs",
 }
 
 prebuilt_etc {
-    name: "CarFromTop.png",
+    name: "epam_CarFromTop.png",
     src: "res/CarFromTop.png",
     sub_dir: "automotive/evs",
 }
 
 prebuilt_etc {
-    name: "LabeledChecker.png",
+    name: "epam_LabeledChecker.png",
     src: "res/LabeledChecker.png",
     sub_dir: "automotive/evs",
 }

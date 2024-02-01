@@ -345,7 +345,7 @@ bool EvsStateControl::configureEvsPipeline(State desiredState) {
     } else {
         // Assumes that SurfaceFlinger is available always after being launched.
 
-        // Do we need a new direct view renderer?
+        // Do we need a new direct view renderer?;
         if (mCameraList[desiredState].size() == 1) {
             // We have a camera assigned to this state for direct view.
             mDesiredRenderer =

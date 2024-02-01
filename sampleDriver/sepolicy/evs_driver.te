@@ -1,0 +1,18 @@
+# allow to access graphics related properties
+get_prop(hal_evs_default, graphics_config_writable_prop);
+
+# Allow socket
+typeattribute hal_evs_default hal_automotive_socket_exemption;
+net_domain(hal_evs_default)
+
+allow hal_evs_default fwmarkd_socket:sock_file write;
+allow hal_evs_default self:tcp_socket { bind create read setopt write accept listen getopt};
+allow hal_evs_default port:tcp_socket name_bind;
+allow hal_evs_default adbd:unix_stream_socket ioctl;
+allow hal_evs_default node:tcp_socket node_bind;
+allow hal_evs_default ion_device:chr_file r_file_perms;
+
+userdebug_or_eng(`
+    dontaudit hal_evs_default netd:unix_stream_socket connectto;
+')
+

@@ -39,7 +39,7 @@ constexpr int kNumBinderThreads = 1;
 }  // namespace
 
 int main() {
-    LOG(INFO) << "EVS Hardware Enumerator service is starting";
+    LOG(INFO) << "Epam EVS Hardware Enumerator service is starting";
 
     const std::string displayServiceInstanceName =
             std::string(ICarDisplayProxy::descriptor) + std::string(kDisplayServiceInstanceName);
