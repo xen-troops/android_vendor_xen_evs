@@ -1,21 +1,25 @@
-# Exterior View System (EVS)
-ENABLE_CAMERA_SERVICE=true
-ENABLE_EVS_SAMPLE=true
 
-PRODUCT_PROPERTY_OVERRIDES += \
-	persist.vendor.evs.uri="ws://192.168.122.1"
+PRODUCT_PRODUCT_PROPERTIES += \
+   persist.automotive.evs.mode=1
 
-PRODUCT_PACKAGES += \
-    android.frameworks.automotive.display@1.0-service \
-    android.hardware.automotive.evs@1.1.xt \
-    android.automotive.evs.manager@1.1 \
-    evs_app_xt \
+PRODUCT_PACKAGES += cardisplayproxyd \
+                    evs_app_epam \
+                    evsmanagerd \
+                    android.hardware.automotive.evs-epam \
 
-PRODUCT_PACKAGES += android.hardware.automotive.evs@1.1-xt
+# Selinux policies for the reference EVS HAL implementation
+BOARD_SEPOLICY_DIRS += vendor/xen/evs/sampleDriver/sepolicy
+
+# EVS HAL implementation for the emulators requires AIDL version of the automotive display
+# service implementation.
+USE_AIDL_DISPLAY_SERVICE := true
+
+#EVS APP config
+PRODUCT_COPY_FILES += \
+    vendor/xen/evs/sampleDriver/config/config_override.json:vendor/etc/automotive/evs/config_override.json \
+
+# Selinux policies for the sample EVS Epam application
+PRODUCT_PRIVATE_SEPOLICY_DIRS += vendor/xen/evs/app/sepolicy/private
 
 PRODUCT_COPY_FILES += \
-    vendor/xen/evs/config_override.json:/system/etc/automotive/evs/config_override.json \
-
-include packages/services/Car/cpp/evs/sampleDriver/sepolicy/evsdriver.mk
-include vendor/xen/evs/sampleDriver/sepolicy/evsdriver.mk
-
+    packages/services/Car/cpp/evs/manager/aidl/init.evs.rc:$(TARGET_COPY_OUT_SYSTEM)/etc/init/init.evs.rc
