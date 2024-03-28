@@ -109,9 +109,9 @@ private:
     aidlevs::CameraDesc         mDescription = {};      // The properties of this camera
     int32_t                     mFormat = 0;            // Values from android_pixel_format_t
     uint32_t                    mUsage  = 0;            // Values from from Gralloc.h
-    int32_t                     mStride = 640;          // Pixels per row (may be greater than image width)
-    int32_t                     mWidth  = 640;
-    int32_t                     mHeight = 480;
+    int32_t                     mStride = 1920;          // Pixels per row (may be greater than image width)
+    int32_t                     mWidth  = 1920;
+    int32_t                     mHeight = 1080;
     std::vector <BufferRecord>  mBuffers;               // Graphics buffers to transfer images
     uint32_t                    mFramesAllowed;         // How many buffers are we currently using
     uint32_t                    mFramesInUse;           // How many buffers are currently outstanding
