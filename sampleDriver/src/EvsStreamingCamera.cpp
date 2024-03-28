@@ -102,6 +102,14 @@ EvsStreamingCamera::EvsStreamingCamera(const char* deviceName,
         // 2) the largest resolution that is smaller that a given configuration.
         int32_t streamId = -1, area = INT_MIN;
         for (auto& [id, cfg] : camInfo->streamConfigurations) {
+            // use 0 as default stream config
+            if (id == 0) {
+                mStride = static_cast<int32_t>(camInfo->streamConfigurations[id].width);
+                mWidth = static_cast<int32_t>(camInfo->streamConfigurations[id].width);
+                mHeight = static_cast<int32_t>(camInfo->streamConfigurations[id].height);
+                mFormat = static_cast<int32_t>(camInfo->streamConfigurations[id].format);
+            }
+
             if (cfg.format == requestedStreamCfg->format) {
                 if (cfg.width == requestedStreamCfg->width &&
                     cfg.height == requestedStreamCfg->height) {
@@ -117,13 +125,10 @@ EvsStreamingCamera::EvsStreamingCamera(const char* deviceName,
             }
         }
 
-        if (streamId >= 0) {
-            LOG(INFO) << "Selected video stream configuration for " << mUri<< ":";
-            LOG(INFO) << "  width = " << camInfo->streamConfigurations[streamId].width;
-            LOG(INFO) << "  height = " << camInfo->streamConfigurations[streamId].height;
-            LOG(INFO) << "  format = " << static_cast<int>(camInfo->streamConfigurations[streamId].format);
-            mFormat = static_cast<uint32_t>(camInfo->streamConfigurations[streamId].format);
-        }
+        LOG(INFO) << "Selected video stream configuration for " << mUri<< ":";
+        LOG(INFO) << "  width = " << mWidth;
+        LOG(INFO) << "  height = " << mHeight;
+        LOG(INFO) << "  format = " << mFormat;
     }
 }
 
