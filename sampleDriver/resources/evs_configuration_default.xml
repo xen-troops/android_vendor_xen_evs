@@ -47,9 +47,10 @@
 
                 <!-- list of supported stream configurations -->
                 <!-- vivid webcam input support below three resolutions -->
-                <stream id='0' width='360' height='180' format='RGBA_8888' framerate='30'/>
-                <stream id='1' width='640' height='480' format='RGBA_8888' framerate='15'/>
-                <stream id='2' width='1280' height='720' format='RGBA_8888' framerate='5'/>
+                <stream id='0' width='1920' height='1080' format='RGBA_8888' framerate='30'/>
+                <stream id='1' width='360' height='180' format='RGBA_8888' framerate='30'/>
+                <stream id='2' width='640' height='480' format='RGBA_8888' framerate='15'/>
+                <stream id='3' width='1280' height='720' format='RGBA_8888' framerate='5'/>
             </caps>
 
             <!-- list of parameters -->
@@ -71,9 +72,10 @@
 
                 <!-- list of supported stream configurations -->
                 <!-- vivid webcam input support below three resolutions -->
-                <stream id='0' width='360' height='180' format='RGBA_8888' framerate='30'/>
-                <stream id='1' width='640' height='480' format='RGBA_8888' framerate='15'/>
-                <stream id='2' width='1280' height='720' format='RGBA_8888' framerate='5'/>
+                <stream id='0' width='1920' height='1080' format='RGBA_8888' framerate='30'/>
+                <stream id='1' width='360' height='180' format='RGBA_8888' framerate='30'/>
+                <stream id='2' width='640' height='480' format='RGBA_8888' framerate='15'/>
+                <stream id='3' width='1280' height='720' format='RGBA_8888' framerate='5'/>
             </caps>
 
             <!-- list of parameters -->
@@ -95,9 +97,10 @@
 
                 <!-- list of supported stream configurations -->
                 <!-- vivid webcam input support below three resolutions -->
-                <stream id='0' width='360' height='180' format='RGBA_8888' framerate='30'/>
-                <stream id='1' width='640' height='480' format='RGBA_8888' framerate='15'/>
-                <stream id='2' width='1280' height='720' format='RGBA_8888' framerate='5'/>
+                <stream id='0' width='1920' height='1080' format='RGBA_8888' framerate='30'/>
+                <stream id='1' width='360' height='180' format='RGBA_8888' framerate='30'/>
+                <stream id='2' width='640' height='480' format='RGBA_8888' framerate='15'/>
+                <stream id='3' width='1280' height='720' format='RGBA_8888' framerate='5'/>
             </caps>
 
             <!-- list of parameters -->
@@ -119,9 +122,10 @@
 
                 <!-- list of supported stream configurations -->
                 <!-- vivid webcam input support below three resolutions -->
-                <stream id='0' width='360' height='180' format='RGBA_8888' framerate='30'/>
-                <stream id='1' width='640' height='480' format='RGBA_8888' framerate='15'/>
-                <stream id='2' width='1280' height='720' format='RGBA_8888' framerate='5'/>
+                <stream id='0' width='1920' height='1080' format='RGBA_8888' framerate='30'/>
+                <stream id='1' width='360' height='180' format='RGBA_8888' framerate='30'/>
+                <stream id='2' width='640' height='480' format='RGBA_8888' framerate='15'/>
+                <stream id='3' width='1280' height='720' format='RGBA_8888' framerate='5'/>
             </caps>
 
             <!-- list of parameters -->
