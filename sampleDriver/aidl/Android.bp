@@ -17,7 +17,8 @@ package {
 }
 
 cc_binary {
-    name: "android.hardware.automotive.evs-default",
+    name: "android.hardware.automotive.evs-xt",
+    overrides: ["android.hardware.automotive.evs-default"],
     defaults: ["android.hardware.graphics.common-ndk_static"],
     vendor: true,
     relative_install_path: "hw",
@@ -70,27 +71,20 @@ cc_binary {
         "-Wthread-safety",
     ],
     init_rc: [
-        "android.hardware.automotive.evs-default.rc"
+        "android.hardware.automotive.evs-xt.rc"
     ],
     required: [
         "evs_aidl_hal_configuration.dtd",
-        "evs_aidl_hal_configuration.xml",
+        "evs_configuration_override.xml",
     ],
     vintf_fragments: [
-        "manifest_android.hardware.automotive.evs-default.xml"
+        "manifest_android.hardware.automotive.evs-xt.xml"
     ],
 }
 
 prebuilt_etc {
-    name: "evs_aidl_hal_configuration.dtd",
+    name: "evs_configuration_override.xml",
     soc_specific: true,
-    src: "resources/evs_configuration.dtd",
-    sub_dir: "automotive/evs",
-}
-
-prebuilt_etc {
-    name: "evs_aidl_hal_configuration.xml",
-    soc_specific: true,
-    src: "resources/evs_configuration_default.xml",
+    src: "resources/evs_aidl_hal_configuration.xml",
     sub_dir: "automotive/evs",
 }
