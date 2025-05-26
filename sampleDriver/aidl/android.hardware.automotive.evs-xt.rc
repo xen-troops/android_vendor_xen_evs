@@ -1,4 +1,4 @@
-service android.hardware.automotive.evs-default /vendor/bin/hw/android.hardware.automotive.evs-default
+service android.hardware.automotive.evs-default /vendor/bin/hw/android.hardware.automotive.evs-xt
     class early_hal
     priority -20
     user graphics
@@ -7,5 +7,3 @@ service android.hardware.automotive.evs-default /vendor/bin/hw/android.hardware.
     onrestart restart evsmanagerd
     disabled
 
-on late-init
-    start android.hardware.automotive.evs-default
