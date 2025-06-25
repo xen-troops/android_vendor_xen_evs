@@ -122,11 +122,6 @@ bool HalCamera::changeFramesInFlight(int delta) {
     // Add the requested delta
     bufferCount += delta;
 
-    // Never drop below 1 buffer -- even if all client cameras get closed
-    if (bufferCount < 1) {
-        bufferCount = 1;
-    }
-
     // Ask the hardware for the resulting buffer count
     if (!mHwCamera->setMaxFramesInFlight(bufferCount).isOk()) {
         return false;
