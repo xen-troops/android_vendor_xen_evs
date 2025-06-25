@@ -1,9 +1,7 @@
-service evs_app /system/bin/evs_app
+service evs_app /system/bin/evs_app-xt
     class hal
     priority -20
     user automotive_evs
     group automotive_evs
     disabled # will not automatically start with its class; must be explictly started.
 
-on late-init
-    start evs_app
