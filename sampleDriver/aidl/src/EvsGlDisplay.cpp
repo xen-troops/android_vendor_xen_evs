@@ -84,7 +84,10 @@ void EvsGlDisplay::forceShutdown() {
     LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay forceShutdown!";
     {
         std::lock_guard lock(mLock);
-
+        if (mState == STOPPED) {
+            LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay already did forceShutdown";
+            return;  // Already stopped
+        }
         // If the buffer isn't being held by a remote client, release it now as an
         // optimization to release the resources more quickly than the destructor might
         // get called.
@@ -93,9 +96,8 @@ void EvsGlDisplay::forceShutdown() {
             if (mBufferBusy || mState == RUN) {
                 LOG(ERROR) << mDisplayProxy << " EvsGlDisplay going down while client is holding a buffer";
             }
-            mState = STOPPING;
         }
-
+        mState = STOPPING;
         // Put this object into an unrecoverable error state since somebody else
         // is going to own the display now.
         mRequestedState = DisplayState::DEAD;
@@ -185,7 +187,8 @@ void EvsGlDisplay::renderFrames() {
         std::lock_guard lock(mLock);
 
         if (!initializeGlContextLocked()) {
-            LOG(ERROR) << "Failed to initialize GL context";
+            LOG(ERROR) << mDisplayProxy << " Failed to initialize GL context";
+            mState = STOPPED;
             return;
         }
 
@@ -198,6 +201,10 @@ void EvsGlDisplay::renderFrames() {
         {
             std::unique_lock lock(mLock);
             ScopedLockAssertion lock_assertion(mLock);
+            LOG(VERBOSE) << mDisplayProxy << " A rendering thread is processing a frame state = " << mState;
+            if (mState != RUN)
+                break;
+            LOG(VERBOSE) << mDisplayProxy << "Will wait new frame state = " << mState;
             mBufferReadyToRender.wait(lock, [this]() REQUIRES(mLock) {
                 return mBufferReady || mState != RUN;
             });
@@ -353,7 +360,14 @@ ScopedAStatus EvsGlDisplay::getTargetBuffer(BufferDesc* _aidl_return) {
         // (an unsupported mode of operation) or else the client hasn't returned
         // a previously issued buffer yet (they're behaving badly).
         // NOTE:  We have to make the callback even if we have nothing to provide
-        LOG(ERROR) << "getTargetBuffer called while no buffers available.";
+        LOG(ERROR) << mDisplayProxy << " getTargetBuffer called while no buffers available.";
+        return ScopedAStatus::fromServiceSpecificError(
+                static_cast<int>(EvsResult::BUFFER_NOT_AVAILABLE));
+    }
+
+    if (!mBuffer.handle) {
+        // If we don't have a buffer, allocate one now
+        LOG(ERROR) << mDisplayProxy << " getTargetBuffer called while invalid handle";
         return ScopedAStatus::fromServiceSpecificError(
                 static_cast<int>(EvsResult::BUFFER_NOT_AVAILABLE));
     }
