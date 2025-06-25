@@ -630,6 +630,9 @@ bool EvsEnumerator::qualifyCaptureDevice(const char* deviceName) {
                        << " Desc: " << formatDescription.description << " Flags: 0x" << std::hex
                        << formatDescription.flags;
             switch (formatDescription.pixelformat) {
+                case V4L2_PIX_FMT_XR24:
+                    found = true;
+                    break;
                 case V4L2_PIX_FMT_YUYV:
                     found = true;
                     break;

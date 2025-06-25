@@ -72,6 +72,8 @@ bool ConfigManagerUtil::convertToPixelFormat(const std::string& in, PixelFormat&
         out = PixelFormat::YCRCB_420_SP;
     } else if (!trimmed.compare("YCBCR_422_I")) {
         out = PixelFormat::YCBCR_422_I;
+    } else if (!trimmed.compare("BGRA_8888")) {
+        out = PixelFormat::BGRA_8888;
     } else {
         out = PixelFormat::UNSPECIFIED;
         success = false;

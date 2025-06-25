@@ -133,14 +133,14 @@ bool EvsGlDisplay::initializeGlContextLocked() {
     }
 
     // Assemble the buffer description we'll use for our render target
-    static_assert(::aidl::android::hardware::graphics::common::PixelFormat::RGBA_8888 ==
+    static_assert(::aidl::android::hardware::graphics::common::PixelFormat::BGRA_8888 ==
                   static_cast<::aidl::android::hardware::graphics::common::PixelFormat>(
-                          HAL_PIXEL_FORMAT_RGBA_8888));
+                          HAL_PIXEL_FORMAT_BGRA_8888));
     mBuffer.description = {
             .width = static_cast<int>(mGlWrapper.getWidth()),
             .height = static_cast<int>(mGlWrapper.getHeight()),
             .layers = 1,
-            .format = PixelFormat::RGBA_8888,
+            .format = PixelFormat::BGRA_8888,
             // FIXME: Below line is not using
             // ::aidl::android::hardware::graphics::common::BufferUsage because
             // BufferUsage enum does not support a bitwise-OR operation; they
