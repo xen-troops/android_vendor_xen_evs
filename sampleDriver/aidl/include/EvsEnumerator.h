@@ -19,7 +19,7 @@
 
 #include "ConfigManager.h"
 #include "EvsGlDisplay.h"
-#include "EvsV4lCamera.h"
+#include "EvsV4lCameraZeroCopy.h"
 
 #include <aidl/android/frameworks/automotive/display/ICarDisplayProxy.h>
 #include <aidl/android/hardware/automotive/evs/BnEvsEnumerator.h>
@@ -85,7 +85,7 @@ public:
 private:
     struct CameraRecord {
         aidlevs::CameraDesc desc;
-        std::weak_ptr<EvsV4lCamera> activeInstance;
+        std::weak_ptr<EvsV4lCameraZeroCopy> activeInstance;
 
         CameraRecord(const char* cameraId) : desc() { desc.id = cameraId; }
     };
