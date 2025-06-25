@@ -103,15 +103,21 @@ bool RenderDirectView::activate() {
             RawStreamConfig* ptr = reinterpret_cast<RawStreamConfig*>(streamCfgs.data.i32);
             for (unsigned idx = 0; idx < streamCfgs.count; idx += kStreamCfgSz) {
                 if (ptr->direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT &&
-                    ptr->format == HAL_PIXEL_FORMAT_RGBA_8888) {
+                    ptr->format == HAL_PIXEL_FORMAT_BGRA_8888) {
                     if (ptr->framerate >= minReqFps && ptr->width * ptr->height > maxArea) {
                         targetCfg->id = ptr->id;
                         targetCfg->width = ptr->width;
                         targetCfg->height = ptr->height;
-
+                         LOG(DEBUG) << "Selected stream configuration: "
+                                  << "id=" << targetCfg->id
+                                  << ", width=" << targetCfg->width
+                                  << ", height=" << targetCfg->height
+                                  << ", format=0x" << std::hex << (int)targetCfg->format
+                                  << ", framerate=" << ptr->framerate;
                         maxArea = ptr->width * ptr->height;
 
                         foundCfg = true;
+			break;
                     }
                 }
                 ++ptr;
@@ -123,7 +129,7 @@ bool RenderDirectView::activate() {
     }
 
     // This client always wants below input data format
-    targetCfg->format = aidl::android::hardware::graphics::common::PixelFormat::RGBA_8888;
+    targetCfg->format = aidl::android::hardware::graphics::common::PixelFormat::BGRA_8888;
 
     // Construct our video texture
     mTexture.reset(createVideoTexture(mEnumerator, mCameraDesc.id.c_str(),

@@ -66,6 +66,6 @@ VideoTex* createVideoTexture(
         const char* deviceName,
         std::unique_ptr<aidl::android::hardware::automotive::evs::Stream> streamCfg,
         EGLDisplay glDisplay, bool useExternalMemory = false,
-        android_pixel_format_t format = HAL_PIXEL_FORMAT_RGBA_8888);
+        android_pixel_format_t format = HAL_PIXEL_FORMAT_BGRA_8888);
 
 #endif  // VIDEOTEX_H
