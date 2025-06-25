@@ -57,6 +57,17 @@ VideoTex::~VideoTex() {
     // Tell the stream to stop flowing
     mStreamHandler->asyncStopStream();
 
+    // If we already have an image backing us, then it's time to return it
+    if (auto h = getNativeHandle(mImageBuffer); h != nullptr) {
+        // Return it since we're done with it
+        mStreamHandler->doneWithFrame(mImageBuffer);
+        free(h);
+    }
+
+    // If new frame is available, we need to drop it
+    if (mStreamHandler->newFrameAvailable())
+        mStreamHandler->doneWithFrame(mStreamHandler->getNewFrame());
+
     // Close the camera
     mEnumerator->closeCamera(mCamera);
 
@@ -74,16 +85,17 @@ bool VideoTex::refresh() {
         return false;
     }
 
-    // If we already have an image backing us, then it's time to return it
-    if (getNativeHandle(mImageBuffer) != nullptr) {
-        // Drop our device texture image
-        if (mKHRimage != EGL_NO_IMAGE_KHR) {
+    // Drop our device texture image
+    if (mKHRimage != EGL_NO_IMAGE_KHR) {
             eglDestroyImageKHR(mDisplay, mKHRimage);
             mKHRimage = EGL_NO_IMAGE_KHR;
-        }
+    }
 
+    // If we already have an image backing us, then it's time to return it
+    if (auto h = getNativeHandle(mImageBuffer); h != nullptr) {
         // Return it since we're done with it
         mStreamHandler->doneWithFrame(mImageBuffer);
+        free(h);
     }
 
     // Get the new image we want to use as our contents
