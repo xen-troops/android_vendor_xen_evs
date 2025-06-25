@@ -1,4 +1,4 @@
-service evsmanagerd /system/bin/evsmanagerd
+service evsmanagerd /system/bin/evsmanagerd-xt
     class early_hal
     priority -20
     user automotive_evs
