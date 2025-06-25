@@ -57,7 +57,7 @@ namespace aidl::android::hardware::automotive::evs::implementation {
 EvsGlDisplay::EvsGlDisplay(const std::shared_ptr<ICarDisplayProxy>& pDisplayProxy,
                            uint64_t displayId) :
       mDisplayId(displayId), mDisplayProxy(pDisplayProxy) {
-    LOG(DEBUG) << "EvsGlDisplay instantiated";
+    LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay instantiated";
 
     // Set up our self description
     // NOTE:  These are arbitrary values chosen for testing
@@ -73,7 +73,7 @@ EvsGlDisplay::EvsGlDisplay(const std::shared_ptr<ICarDisplayProxy>& pDisplayProx
 }
 
 EvsGlDisplay::~EvsGlDisplay() {
-    LOG(DEBUG) << "EvsGlDisplay being destroyed";
+    LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay being destroyed";
     forceShutdown();
 }
 
@@ -81,7 +81,7 @@ EvsGlDisplay::~EvsGlDisplay() {
  * This gets called if another caller "steals" ownership of the display
  */
 void EvsGlDisplay::forceShutdown() {
-    LOG(DEBUG) << "EvsGlDisplay forceShutdown";
+    LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay forceShutdown!";
     {
         std::lock_guard lock(mLock);
 
@@ -91,7 +91,7 @@ void EvsGlDisplay::forceShutdown() {
         if (mBuffer.handle != nullptr) {
             // Report if we're going away while a buffer is outstanding
             if (mBufferBusy || mState == RUN) {
-                LOG(ERROR) << "EvsGlDisplay going down while client is holding a buffer";
+                LOG(ERROR) << mDisplayProxy << " EvsGlDisplay going down while client is holding a buffer";
             }
             mState = STOPPING;
         }
@@ -102,9 +102,17 @@ void EvsGlDisplay::forceShutdown() {
     }
     mBufferReadyToRender.notify_all();
 
+    LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay waiting for the render thread to stop";
+
     if (mRenderThread.joinable()) {
         mRenderThread.join();
     }
+    LOG(DEBUG) << mDisplayProxy << " EvsGlDisplay thread joined";
+    ::android::GraphicBufferAllocator &alloc(::android::GraphicBufferAllocator::get());
+    std::string str;
+
+    alloc.dump(str, false);
+    LOG(DEBUG) << str;
 }
 
 /**
@@ -118,7 +126,7 @@ bool EvsGlDisplay::initializeGlContextLocked() {
     // (briefly) shown.
     if (!mGlWrapper.initialize(mDisplayProxy, mDisplayId)) {
         // Report the failure
-        LOG(ERROR) << "Failed to initialize GL display";
+        LOG(ERROR) << mDisplayProxy << " Failed to initialize GL display";
         return false;
     }
 
@@ -151,7 +159,7 @@ bool EvsGlDisplay::initializeGlContextLocked() {
     mBuffer.description.stride = stride;
     mBuffer.fingerprint = generateFingerPrint(mBuffer.handle);
     if (result != ::android::NO_ERROR) {
-        LOG(ERROR) << "Error " << result << " allocating " << mBuffer.description.width << " x "
+        LOG(ERROR) << mDisplayProxy << " Error " << result << " allocating " << mBuffer.description.width << " x "
                    << mBuffer.description.height << " graphics buffer.";
         mGlWrapper.shutdown();
         return false;
@@ -159,12 +167,12 @@ bool EvsGlDisplay::initializeGlContextLocked() {
 
     mBuffer.handle = handle;
     if (mBuffer.handle == nullptr) {
-        LOG(ERROR) << "We didn't get a buffer handle back from the allocator";
+        LOG(ERROR) << mDisplayProxy << " We didn't get a buffer handle back from the allocator";
         mGlWrapper.shutdown();
         return false;
     }
 
-    LOG(DEBUG) << "Allocated new buffer " << mBuffer.handle << " with stride "
+    LOG(DEBUG) << mDisplayProxy << " Allocated new buffer " << mBuffer.handle << " with stride "
                << mBuffer.description.stride;
     return true;
 }
@@ -194,7 +202,7 @@ void EvsGlDisplay::renderFrames() {
                 return mBufferReady || mState != RUN;
             });
             if (mState != RUN) {
-                LOG(DEBUG) << "A rendering thread is stopping";
+                LOG(DEBUG) << mDisplayProxy << " A rendering thread is stopping";
                 break;
             }
             mBufferReady = false;
@@ -202,14 +210,14 @@ void EvsGlDisplay::renderFrames() {
 
         // Update the texture contents with the provided data
         if (!mGlWrapper.updateImageTexture(mBuffer.handle, mBuffer.description)) {
-            LOG(WARNING) << "Failed to update the image texture";
+            LOG(WARNING) << mDisplayProxy << " Failed to update the image texture";
             continue;
         }
 
         // Put the image on the screen
         mGlWrapper.renderImageToScreen();
         if (!debugFirstFrameDisplayed) {
-            LOG(DEBUG) << "EvsFirstFrameDisplayTiming start time: " << ::android::elapsedRealtime()
+            LOG(DEBUG) << mDisplayProxy << " EvsFirstFrameDisplayTiming start time: " << ::android::elapsedRealtime()
                        << " ms.";
             debugFirstFrameDisplayed = true;
         }
@@ -222,7 +230,7 @@ void EvsGlDisplay::renderFrames() {
         mBufferDone.notify_all();
     }
 
-    LOG(DEBUG) << "A rendering thread is stopped.";
+    LOG(DEBUG) << mDisplayProxy << " A rendering thread is stopped.";
 
     // Drop the graphics buffer we've been using
     ::android::GraphicBufferAllocator& alloc(::android::GraphicBufferAllocator::get());
@@ -328,7 +336,7 @@ ScopedAStatus EvsGlDisplay::getTargetBuffer(BufferDesc* _aidl_return) {
     std::unique_lock lock(mLock);
     ScopedLockAssertion lock_assertion(mLock);
     if (mRequestedState == DisplayState::DEAD) {
-        LOG(ERROR) << "Rejecting buffer request from object that lost ownership of the display.";
+        LOG(ERROR) << mDisplayProxy << " Rejecting buffer request from object that lost ownership of the display.";
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::OWNERSHIP_LOST));
     }
 
@@ -354,7 +362,7 @@ ScopedAStatus EvsGlDisplay::getTargetBuffer(BufferDesc* _aidl_return) {
     mBufferBusy = true;
 
     // Send the buffer to the client
-    LOG(VERBOSE) << "Providing display buffer handle " << mBuffer.handle;
+    LOG(VERBOSE) << mDisplayProxy << " Providing display buffer handle " << mBuffer.handle;
 
     BufferDesc bufferDescToSend = {
             .buffer =
@@ -381,15 +389,15 @@ ScopedAStatus EvsGlDisplay::returnTargetBufferForDisplay(const BufferDesc& buffe
 
     // Nobody should call us with a null handle
     if (buffer.buffer.handle.fds.size() < 1) {
-        LOG(ERROR) << __FUNCTION__ << " called without a valid buffer handle.";
+        LOG(ERROR) << mDisplayProxy << " " << __FUNCTION__ << " called without a valid buffer handle.";
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::INVALID_ARG));
     }
     if (buffer.bufferId != mBuffer.fingerprint) {
-        LOG(ERROR) << "Got an unrecognized frame returned.";
+        LOG(ERROR) << mDisplayProxy << " Got an unrecognized frame returned.";
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::INVALID_ARG));
     }
     if (!mBufferBusy) {
-        LOG(ERROR) << "A frame was returned with no outstanding frames.";
+        LOG(ERROR) << mDisplayProxy << " A frame was returned with no outstanding frames.";
         return ScopedAStatus::fromServiceSpecificError(static_cast<int>(EvsResult::INVALID_ARG));
     }
 
@@ -407,7 +415,7 @@ ScopedAStatus EvsGlDisplay::returnTargetBufferForDisplay(const BufferDesc& buffe
     // Validate we're in an expected state
     if (mRequestedState != DisplayState::VISIBLE) {
         // Not sure why a client would send frames back when we're not visible.
-        LOG(WARNING) << "Got a frame returned while not visible - ignoring.";
+        LOG(WARNING) << mDisplayProxy << " Got a frame returned while not visible - ignoring.";
         return ScopedAStatus::ok();
     }
     mBufferReady = true;
