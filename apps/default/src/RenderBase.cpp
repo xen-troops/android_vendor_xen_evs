@@ -152,8 +152,8 @@ bool RenderBase::attachRenderTarget(const BufferDesc& tgtBuffer) {
     const AHardwareBuffer_Desc* pDesc =
             reinterpret_cast<const AHardwareBuffer_Desc*>(&tgtBuffer.buffer.description);
     // Hardcoded to RGBx for now
-    if (pDesc->format != HAL_PIXEL_FORMAT_RGBA_8888) {
-        LOG(ERROR) << "Unsupported target buffer format";
+    if (pDesc->format != HAL_PIXEL_FORMAT_BGRA_8888) {
+        LOG(ERROR) << "Unsupported target buffer format " << pDesc->format;
         return false;
     }
 

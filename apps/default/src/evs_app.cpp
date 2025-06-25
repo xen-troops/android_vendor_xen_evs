@@ -78,7 +78,7 @@ bool subscribeToVHal(ISubscriptionClient* client, VehicleProperty propertyId) {
 bool convertStringToFormat(const char* str, android_pixel_format_t* output) {
     bool result = true;
     if (EqualsIgnoreCase(str, "RGBA8888")) {
-        *output = HAL_PIXEL_FORMAT_RGBA_8888;
+        *output = HAL_PIXEL_FORMAT_BGRA_8888;
     } else if (EqualsIgnoreCase(str, "YV12")) {
         *output = HAL_PIXEL_FORMAT_YV12;
     } else if (EqualsIgnoreCase(str, "NV21")) {
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     const char* evsServiceName = "default";
     int displayId = -1;
     bool useExternalMemory = false;
-    android_pixel_format_t extMemoryFormat = HAL_PIXEL_FORMAT_RGBA_8888;
+    android_pixel_format_t extMemoryFormat = HAL_PIXEL_FORMAT_BGRA_8888;
     int32_t mockGearSignal = static_cast<int32_t>(VehicleGear::GEAR_REVERSE);
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--test") == 0) {
