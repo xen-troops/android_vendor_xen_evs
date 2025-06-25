@@ -20,7 +20,8 @@ package {
 }
 
 cc_binary {
-    name: "evs_app",
+    name: "evs_app-xt",
+    overrides: ["evs_app"],
     defaults: [
         "android.hardware.graphics.common-ndk_shared",
         "vhalclient_defaults",
@@ -54,11 +55,11 @@ cc_binary {
         "libvhalclient",
     ],
     required: [
-        "config.json",
+        "config_override.json",
         "CarFromTop.png",
         "LabeledChecker.png",
     ],
-    init_rc: ["evs_app.rc"],
+    init_rc: ["evs_app-xt.rc"],
     cflags: [
         "-DLOG_TAG=\"EvsApp\"",
         "-DGL_GLEXT_PROTOTYPES",
@@ -70,30 +71,10 @@ cc_binary {
     ],
 }
 
-cc_library {
-    name: "libcartelemetry-evs-proto",
-    srcs: [":cartelemetry-evs-proto-srcs"],
-    proto: {
-        export_proto_headers: true,
-        type: "lite",
-    },
-    shared_libs: ["libprotobuf-cpp-lite"],
-}
-
 prebuilt_etc {
-    name: "config.json",
+    name: "config_override.json",
     src: "res/config.json",
     sub_dir: "automotive/evs",
+    soc_specific: true,
 }
 
-prebuilt_etc {
-    name: "CarFromTop.png",
-    src: "res/CarFromTop.png",
-    sub_dir: "automotive/evs",
-}
-
-prebuilt_etc {
-    name: "LabeledChecker.png",
-    src: "res/LabeledChecker.png",
-    sub_dir: "automotive/evs",
-}
