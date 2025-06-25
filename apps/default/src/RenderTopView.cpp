@@ -30,6 +30,7 @@ namespace {
 
 using aidl::android::hardware::automotive::evs::BufferDesc;
 using aidl::android::hardware::automotive::evs::IEvsEnumerator;
+using aidl::android::hardware::automotive::evs::Stream;
 
 // Simple aliases to make geometric math using vectors more readable
 const unsigned X = 0;
@@ -142,8 +143,15 @@ bool RenderTopView::activate() {
 
     // Set up streaming video textures for our associated cameras
     for (auto&& cam : mActiveCameras) {
+        std::unique_ptr<Stream> targetCfg(new Stream());
+        // This client always wants below input data format
+        targetCfg->format = aidl::android::hardware::graphics::common::PixelFormat::BGRA_8888;
+        targetCfg->framerate = 30;
+        targetCfg->width = 1920;
+        targetCfg->height = 1080;
+        targetCfg->id = 1;
         cam.tex.reset(
-                createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), nullptr, sDisplay));
+                createVideoTexture(mEnumerator, cam.info.cameraId.c_str(), std::move(targetCfg), sDisplay));
         if (!cam.tex) {
             LOG(ERROR) << "Failed to set up video texture for " << cam.info.cameraId << " ("
                        << cam.info.function << ")";
