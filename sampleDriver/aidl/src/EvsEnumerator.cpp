@@ -19,6 +19,7 @@
 #include "ConfigManager.h"
 #include "EvsGlDisplay.h"
 #include "EvsV4lCameraZeroCopy.h"
+#include "EvsV4lCamera.h"
 
 #include <aidl/android/hardware/automotive/evs/DeviceStatusType.h>
 #include <aidl/android/hardware/automotive/evs/EvsResult.h>
@@ -370,7 +371,7 @@ ScopedAStatus EvsEnumerator::openCamera(const std::string& id, const Stream& cfg
     }
 
     // Has this camera already been instantiated by another caller?
-    std::shared_ptr<EvsV4lCameraZeroCopy> pActiveCamera = pRecord->activeInstance.lock();
+    std::shared_ptr<CameraType> pActiveCamera = pRecord->activeInstance.lock();
     if (pActiveCamera) {
         LOG(WARNING) << "Killing previous camera because of new caller";
         closeCamera(pActiveCamera);
@@ -378,14 +379,14 @@ ScopedAStatus EvsEnumerator::openCamera(const std::string& id, const Stream& cfg
 
     // Construct a camera instance for the caller
     if (!sConfigManager) {
-        pActiveCamera = EvsV4lCameraZeroCopy::Create(id.data());
+        pActiveCamera = CameraType::Create(id.data());
     } else {
-        pActiveCamera = EvsV4lCameraZeroCopy::Create(id.data(), sConfigManager->getCameraInfo(id), &cfg);
+        pActiveCamera = CameraType::Create(id.data(), sConfigManager->getCameraInfo(id), &cfg);
     }
 
     pRecord->activeInstance = pActiveCamera;
     if (!pActiveCamera) {
-        LOG(ERROR) << "Failed to create new EvsV4lCameraZeroCopy object for " << id;
+        LOG(ERROR) << "Failed to create new Camera object for " << id;
         return ScopedAStatus::fromServiceSpecificError(
                 static_cast<int>(EvsResult::UNDERLYING_SERVICE_ERROR));
     }
@@ -572,7 +573,7 @@ void EvsEnumerator::closeCamera_impl(const std::shared_ptr<IEvsCamera>& pCamera,
     if (!pRecord) {
         LOG(ERROR) << "Asked to close a camera whose name isn't recognized";
     } else {
-        std::shared_ptr<EvsV4lCameraZeroCopy> pActiveCamera = pRecord->activeInstance.lock();
+        std::shared_ptr<CameraType> pActiveCamera = pRecord->activeInstance.lock();
         if (!pActiveCamera) {
             LOG(WARNING) << "Somehow a camera is being destroyed "
                          << "when the enumerator didn't know one existed";

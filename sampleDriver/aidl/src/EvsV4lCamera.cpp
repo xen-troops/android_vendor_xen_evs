@@ -39,7 +39,7 @@ using ::android::base::Result;
 using ::ndk::ScopedAStatus;
 
 // Default camera output image resolution
-constexpr std::array<int32_t, 2> kDefaultResolution = {640, 480};
+constexpr std::array<int32_t, 2> kDefaultResolution = {1936, 1552};
 
 // Arbitrary limit on number of graphics buffers allowed to be allocated
 // Safeguards against unreasonable resource consumption and provides a testable limit
@@ -152,7 +152,7 @@ ScopedAStatus EvsV4lCamera::startVideoStream(const std::shared_ptr<IEvsCameraStr
 
     // If the client never indicated otherwise, configure ourselves for a single streaming buffer
     if (mFramesAllowed < 1) {
-        if (!setAvailableFrames_Locked(1)) {
+        if (!setAvailableFrames_Locked(V4L_BUFFER_COUNT)) {
             LOG(ERROR) << "Failed to start stream because we couldn't get a graphics buffer";
             return ScopedAStatus::fromServiceSpecificError(
                     static_cast<int>(EvsResult::BUFFER_NOT_AVAILABLE));
@@ -184,6 +184,18 @@ ScopedAStatus EvsV4lCamera::startVideoStream(const std::shared_ptr<IEvsCameraStr
             switch (videoSrcFormat) {
                 case V4L2_PIX_FMT_YUYV:
                     mFillBufferFromVideo = fillRGBAFromYUYV;
+                    break;
+                case V4L2_PIX_FMT_XR24:
+                    mFillBufferFromVideo = fillRGBAfromXR24;
+                    break;
+                default:
+                    LOG(ERROR) << "Unhandled camera source format " << (char*)&videoSrcFormat;
+            }
+            break;
+        case HAL_PIXEL_FORMAT_BGRA_8888:
+            switch (videoSrcFormat) {
+                case V4L2_PIX_FMT_XR24:
+                    mFillBufferFromVideo = copyBGRA;
                     break;
                 default:
                     LOG(ERROR) << "Unhandled camera source format " << (char*)&videoSrcFormat;

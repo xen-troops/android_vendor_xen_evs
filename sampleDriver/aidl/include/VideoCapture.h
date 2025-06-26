@@ -23,6 +23,10 @@
 #include <set>
 #include <thread>
 
+#define V4L2_PIX_FMT_XR24 0x34325258
+
+#define V4L_BUFFER_COUNT 1
+
 typedef v4l2_buffer imageBuffer;
 
 class VideoCapture final {
@@ -80,6 +84,7 @@ private:
     std::thread mCaptureThread;  // The thread we'll use to dispatch frames
     std::atomic<int> mRunMode;   // Used to signal the frame loop (see RunModes below)
     std::set<int> mFrames;       // Set of available frame buffers
+    mutable std::mutex mAccessLock;
 
     // Careful changing these -- we're using bit-wise ops to manipulate these
     enum RunModes {

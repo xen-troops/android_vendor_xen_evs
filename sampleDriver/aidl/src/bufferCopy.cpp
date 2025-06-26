@@ -31,6 +31,48 @@ int align(int value) {
     return (value + mask) & ~mask;
 }
 
+void copyBGRA(const BufferDesc& tgtBuff, uint8_t* tgt, void* imgData, uint32_t imgStride)
+{
+    const uint8_t* src = static_cast<const uint8_t*>(imgData);
+    const AHardwareBuffer_Desc* pDesc =
+        reinterpret_cast<const AHardwareBuffer_Desc*>(&tgtBuff.buffer.description);
+    uint32_t tgtWidth = pDesc->width;
+    uint32_t tgtHeight = pDesc->height;
+    uint32_t tgtStride = pDesc->stride * 4;
+
+    if (tgtWidth == 0 || tgtHeight == 0) {
+        LOG(ERROR) << "Failed to copyBGRA.";
+        return;
+    }
+
+    const uint32_t rowBytes = tgtWidth * 4;  // 4 bytes per pixel (BGRA)
+
+    for (uint32_t y = 0; y < tgtHeight; ++y) {
+        const uint8_t* srcRow = src + y * imgStride;
+        uint8_t* tgtRow = tgt + y * tgtStride;
+        std::memcpy(tgtRow, srcRow, rowBytes);
+    }
+    LOG(VERBOSE) << "Converted frame to BGRA." << tgtBuff.buffer.description.width
+                 << "x" << tgtBuff.buffer.description.height;
+}
+
+void fillRGBAfromXR24(const BufferDesc& tgtBuff, uint8_t* tgt, void* imgData, unsigned imgStride) {
+    const AHardwareBuffer_Desc* pDesc =
+            reinterpret_cast<const AHardwareBuffer_Desc*>(&tgtBuff.buffer.description);
+    const auto dstStrideInBytes = pDesc->stride * 4;  // 4-byte per pixel
+    auto result = libyuv::ABGRToARGB((const uint8_t*)imgData,
+                                     imgStride,  // input stride in bytes
+                                     tgt,
+                                     dstStrideInBytes,  // output stride in bytes
+                                     pDesc->width, pDesc->height);
+    if (result) {
+        LOG(ERROR) << "Failed to convert RGBAfromXR24.";
+        return;
+    }
+
+    LOG(VERBOSE) << "Converted frame to RGBAfromXR24.";
+}
+
 void fillNV21FromNV21(const BufferDesc& tgtBuff, uint8_t* tgt, void* imgData, unsigned) {
     // The NV21 format provides a Y array of 8bit values, followed by a 1/2 x 1/2 interleave U/V
     // array. It assumes an even width and height for the overall image, and a horizontal stride
