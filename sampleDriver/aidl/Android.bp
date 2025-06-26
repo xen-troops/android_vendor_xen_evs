@@ -65,6 +65,7 @@ cc_binary {
         "-DLOG_TAG=\"EvsDriver\"",
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",
+        "-DUSE_ZEROCOPY",
         "-Wall",
         "-Wextra",
         "-Werror",

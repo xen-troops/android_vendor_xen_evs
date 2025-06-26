@@ -37,8 +37,9 @@
 //        experimentation.
 bool VideoCapture::open(const char* deviceName, const int32_t width, const int32_t height) {
     // If we want a polling interface for getting frames, we would use O_NONBLOCK
-    mDeviceFd = ::open(deviceName, O_RDWR, 0);
-    if (mDeviceFd < 0) {
+    mDeviceFd = ::open(deviceName, O_RDWR | O_NONBLOCK, 0);
+    if (mDeviceFd < 0)
+    {
         PLOG(ERROR) << "failed to open device " << deviceName;
         return false;
     }
@@ -88,7 +89,7 @@ bool VideoCapture::open(const char* deviceName, const int32_t width, const int32
     // Set our desired output format
     v4l2_format format;
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_XR24;
     format.fmt.pix.width = width;
     format.fmt.pix.height = height;
     LOG(INFO) << "Requesting format: " << ((char*)&format.fmt.pix.pixelformat)[0]
@@ -132,6 +133,7 @@ void VideoCapture::close() {
 
     if (isOpen()) {
         LOG(DEBUG) << "closing video device file handle " << mDeviceFd;
+        std::unique_lock<std::mutex> lock(mAccessLock);
         ::close(mDeviceFd);
         mDeviceFd = -1;
     }
@@ -150,7 +152,7 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
     v4l2_requestbuffers bufrequest;
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     bufrequest.memory = V4L2_MEMORY_MMAP;
-    bufrequest.count = 1;
+    bufrequest.count = V4L_BUFFER_COUNT;
     if (ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest) < 0) {
         PLOG(ERROR) << "VIDIOC_REQBUFS failed";
         return false;
@@ -215,7 +217,9 @@ bool VideoCapture::startStream(std::function<void(VideoCapture*, imageBuffer*, v
 
 void VideoCapture::stopStream() {
     // Tell the background thread to stop
+    LOG(DEBUG) << __FUNCTION__;
     int prevRunMode = mRunMode.fetch_or(STOPPING);
+    std::unique_lock<std::mutex> lock(mAccessLock);
     if (prevRunMode == STOPPED) {
         // The background thread wasn't running, so set the flag back to STOPPED
         mRunMode = STOPPED;
@@ -282,11 +286,33 @@ void VideoCapture::collectFrames() {
     // Run until our atomic signal is cleared
     while (mRunMode == RUN) {
         struct v4l2_buffer buf = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE, .memory = V4L2_MEMORY_MMAP};
+        int ret = 0;
 
-        // Wait for a buffer to be ready
-        if (ioctl(mDeviceFd, VIDIOC_DQBUF, &buf) < 0) {
-            PLOG(ERROR) << "VIDIOC_DQBUF failed";
-            break;
+        LOG(VERBOSE) << "VIDIOC_DQBUF";
+
+        while (true) {
+            std::unique_lock<std::mutex> lock(mAccessLock);
+            ret = ioctl(mDeviceFd, VIDIOC_DQBUF, &buf);
+            if (ret == 0)
+                break;
+
+            if (errno == EAGAIN) {
+                // No buffer ready, retry after short sleep or continue immediately
+                lock.unlock();
+                usleep(5000); // 5ms backoff
+                if (mRunMode != RUN) {
+                    LOG(DEBUG) << "VideoCapture thread ending";
+                    mRunMode = STOPPED;
+                    return;
+                }
+                lock.lock();
+                continue;
+            }
+            if (ret != 0) {
+                // Real error
+                PLOG(ERROR) << "VIDIOC_DQBUF failed";
+                return;
+            }
         }
 
         mFrames.insert(buf.index);

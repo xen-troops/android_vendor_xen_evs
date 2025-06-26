@@ -20,6 +20,7 @@
 #include "ConfigManager.h"
 #include "EvsGlDisplay.h"
 #include "EvsV4lCameraZeroCopy.h"
+#include "EvsV4lCamera.h"
 
 #include <aidl/android/frameworks/automotive/display/ICarDisplayProxy.h>
 #include <aidl/android/hardware/automotive/evs/BnEvsEnumerator.h>
@@ -39,6 +40,12 @@
 namespace aidl::android::hardware::automotive::evs::implementation {
 
 namespace aidlevs = ::aidl::android::hardware::automotive::evs;
+
+#ifdef USE_ZEROCOPY
+    using CameraType = EvsV4lCameraZeroCopy;
+#else
+    using CameraType = EvsV4lCamera;
+#endif
 
 class EvsEnumerator final : public ::aidl::android::hardware::automotive::evs::BnEvsEnumerator {
 public:
@@ -85,8 +92,7 @@ public:
 private:
     struct CameraRecord {
         aidlevs::CameraDesc desc;
-        std::weak_ptr<EvsV4lCameraZeroCopy> activeInstance;
-
+        std::weak_ptr<CameraType> activeInstance;
         CameraRecord(const char* cameraId) : desc() { desc.id = cameraId; }
     };
 
