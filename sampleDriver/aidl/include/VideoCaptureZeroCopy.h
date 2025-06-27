@@ -40,11 +40,14 @@ typedef v4l2_buffer imageBuffer;
 
 
 class VideoCaptureZeroCopy final {
+
+    using VideoCaptureCallback = std::function<void(VideoCaptureZeroCopy*, imageBuffer*, void*)>;
+
 public:
     bool open(const char* deviceName, const int32_t width = 0, const int32_t height = 0);
     void close();
 
-    bool startStream(std::function<void(VideoCaptureZeroCopy*, imageBuffer*, void*)> callback = nullptr);
+    bool startStream(const std::vector<BufferRecord>& buffers, VideoCaptureCallback callback = nullptr);
     void stopStream();
 
     // Valid only after open()
@@ -72,7 +75,6 @@ public:
 private:
     void collectFrames();
     bool returnFrame(int id);
-    void dumpAllocationsToLog();
 
     int mDeviceFd = -1;
 
@@ -98,7 +100,7 @@ private:
         STOPPING = 2,
     };
 
-    std::vector<aidl::android::hardware::automotive::evs::BufferDesc> mRegisteredBuffers;
+    std::vector<buffer_handle_t> mRegisteredBuffers;
     std::atomic<bool> mBuffersRegistered = false;
     mutable std::mutex mAccessLock;
     constexpr static uint32_t sDefaultBufferCount = 2;

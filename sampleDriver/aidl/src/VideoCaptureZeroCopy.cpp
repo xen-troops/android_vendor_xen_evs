@@ -181,68 +181,7 @@ void VideoCaptureZeroCopy::close()
     }
 }
 
-bool VideoCaptureZeroCopy::unRegisterBuffers()
-{
-    if (!mBuffersRegistered)
-    {
-        LOG(DEBUG) << "Buffers not registered, skipping derigistration.";
-        return true;
-    }
-
-    LOG(DEBUG) << "Deregistering buffers for video capture";
-    mBuffersRegistered = false;
-    mRegisteredBuffers.clear();
-    dumpAllocationsToLog();
-    return true;
-}
-
-bool VideoCaptureZeroCopy::registerBuffers(std::vector<BufferRecord>& buffers)
-{
-    if (mBuffersRegistered)
-    {
-        LOG(DEBUG) << "Buffers already registered...";
-        return true;
-    }
-
-    std::unique_lock<std::mutex> lock(mAccessLock);
-    LOG(DEBUG) << "Registering buffers for video capture";
-    mRegisteredBuffers.resize(buffers.size());
-
-    for (size_t i = 0; i < buffers.size(); ++i)
-    {
-        if (buffers[i].handle == nullptr)
-            continue;
-
-        BufferDesc buf;
-        AHardwareBuffer_Desc *pDesc =
-            reinterpret_cast<AHardwareBuffer_Desc *>(&buf.buffer.description);
-        pDesc->width = mWidth;
-        pDesc->height = mHeight;
-        pDesc->layers = 1;
-        pDesc->format = sDefaultFormat;
-        pDesc->usage = sDefaultUsage;
-        pDesc->stride = mStride;
-        buf.buffer.handle = android::makeToAidl(buffers[i].handle);
-        buf.bufferId = i; // Unique number to identify this buffer
-        mRegisteredBuffers[i] = std::move(buf);
-        LOG(VERBOSE) << "Registered buffer id=" << i << " width =" << pDesc->width << " height =" << pDesc->height;
-        LOG(VERBOSE) << "format = " << pDesc->format << " usage =" << pDesc->usage << " stride =" << pDesc->stride;
-    }
-    mBuffersRegistered = true;
-    dumpAllocationsToLog();
-    return true;
-}
-
-void VideoCaptureZeroCopy::dumpAllocationsToLog()
-{
-    android::GraphicBufferAllocator &alloc(android::GraphicBufferAllocator::get());
-    std::string str;
-
-    alloc.dump(str, false);
-    LOG(VERBOSE) << str;
-}
-
-bool VideoCaptureZeroCopy::startStream(std::function<void(VideoCaptureZeroCopy *, imageBuffer *, void *)> callback)
+bool VideoCaptureZeroCopy::startStream(const std::vector<BufferRecord>& buffers, VideoCaptureCallback callback)
 {
     LOG(INFO) << "Starting streaming from video device "
               << mDeviceFd;
@@ -256,15 +195,13 @@ bool VideoCaptureZeroCopy::startStream(std::function<void(VideoCaptureZeroCopy *
         return false;
     }
 
-    if (!mBuffersRegistered)
-        return false;
     std::unique_lock<std::mutex> lock(mAccessLock);
-    LOG(INFO) << "Registered " << mRegisteredBuffers.size() << " buffers for streaming.";
+    LOG(INFO) << "Registered " << buffers.size() << " buffers for streaming.";
     // Tell the L4V2 driver to prepare our streaming buffers
     v4l2_requestbuffers bufrequest;
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     bufrequest.memory = V4L2_MEMORY_USERPTR;
-    bufrequest.count = mRegisteredBuffers.size();
+    bufrequest.count = buffers.size();
     if (ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest) < 0)
     {
         PLOG(ERROR) << "VIDIOC_REQBUFS failed";
@@ -281,7 +218,7 @@ bool VideoCaptureZeroCopy::startStream(std::function<void(VideoCaptureZeroCopy *
         void *targetPixels = nullptr;
         ::android::GraphicBufferMapper &mapper = ::android::GraphicBufferMapper::get();
         auto result =
-            mapper.lock(::android::makeFromAidl(mRegisteredBuffers[i].buffer.handle), sDefaultUsage,
+            mapper.lock(buffers[i].handle, sDefaultUsage,
                         ::android::Rect(mWidth, mHeight),
                         (void **)&targetPixels);
         if (!targetPixels)
@@ -300,7 +237,7 @@ bool VideoCaptureZeroCopy::startStream(std::function<void(VideoCaptureZeroCopy *
         mBufferInfos[i].memory = V4L2_MEMORY_USERPTR;
         mBufferInfos[i].m.userptr = reinterpret_cast<unsigned long>(targetPixels);
         mBufferInfos[i].index = i;
-        mBufferInfos[i].length = sBPPforDefaultFormat * mRegisteredBuffers[i].buffer.description.width * mRegisteredBuffers[i].buffer.description.height;
+        mBufferInfos[i].length = sBPPforDefaultFormat * sDefaultHeight * sDefaultWidth;
         LOG(INFO) << "Buffer " << i << " length = " << std::dec
                   << mBufferInfos[i].length;
         if (ioctl(mDeviceFd, VIDIOC_QUERYBUF, &mBufferInfos[i]) < 0)
@@ -393,18 +330,14 @@ void VideoCaptureZeroCopy::stopStream()
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     bufrequest.memory = V4L2_MEMORY_USERPTR;
     bufrequest.count = 0;
-    if(ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest) < 0) {
-        PLOG(ERROR) << "VIDIOC_REQBUFS failed ....";
-    }
+    ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest);
+
     for (int i = 0; i < mNumBuffers; ++i)
     {
-        // Unmap the buffers we allocated
-        // munmap(mPixelBuffers[i], mBufferInfos[i].length);
         mPixelBuffers[i] = nullptr;
         // Clear the buffer info
         memset(&mBufferInfos[i], 0, sizeof(v4l2_buffer));
     }
-    unRegisterBuffers();
 
     // Drop our reference to the frame delivery callback interface
     mCallback = nullptr;
@@ -425,7 +358,7 @@ bool VideoCaptureZeroCopy::returnFrame(int id)
     }
 
     // Requeue the buffer to capture the next available frame
-    if (ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfos[id]) < 0)
+    if (mRunMode == RUN && ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfos[id]) < 0)
     {
         PLOG(ERROR) << "VIDIOC_QBUF failed";
         return false;

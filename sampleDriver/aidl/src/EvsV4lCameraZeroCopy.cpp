@@ -43,7 +43,7 @@ using ::ndk::ScopedAStatus;
 
 // Arbitrary limit on number of graphics buffers allowed to be allocated
 // Safeguards against unreasonable resource consumption and provides a testable limit
-constexpr unsigned kMaxBuffersInFlight = 6;
+constexpr unsigned kMaxBuffersInFlight = 10;
 
 }  // namespace
 
@@ -95,6 +95,7 @@ void EvsV4lCameraZeroCopy::shutdown() {
                 LOG(WARNING) << "Skipping release of null buffer handle";
                 continue;
             }
+            LOG(DEBUG) << "Releasing buffer with handle " << rec.handle;
             if (rec.inUse) {
                 LOG(WARNING) << "Releasing buffer despite remote ownership";
             }
@@ -179,10 +180,8 @@ ScopedAStatus EvsV4lCameraZeroCopy::startVideoStream(const std::shared_ptr<IEvsC
     // Record the user's callback for use when we have a frame ready
     mStream = client;
 
-    mVideo.registerBuffers(mBuffers);
-
     // Set up the video stream with a callback to our member function forwardFrame()
-    if (!mVideo.startStream([this](VideoCaptureZeroCopy*, imageBuffer* tgt, void* data) {
+    if (!mVideo.startStream(mBuffers, [this](VideoCaptureZeroCopy*, imageBuffer* tgt, void* data) {
             this->forwardFrame(tgt, data);
         })) {
         // No need to hold onto this if we failed to start
@@ -213,36 +212,6 @@ ScopedAStatus EvsV4lCameraZeroCopy::stopVideoStream() {
         // Drop our reference to the client's stream receiver
         mStream = nullptr;
     }
-    // Drop all the graphics buffers we've been using
-    std::unique_lock<std::mutex> lock(mAccessLock);
-    if (mBuffers.size() > 0) {
-        ::android::GraphicBufferAllocator& alloc(::android::GraphicBufferAllocator::get());
-        ::android::GraphicBufferMapper &mapper = ::android::GraphicBufferMapper::get();
-        for (auto&& rec : mBuffers) {
-            if (rec.handle == nullptr) {
-                LOG(WARNING) << "Skipping release of null buffer handle";
-                continue;
-            }
-            LOG(DEBUG) << "Releasing buffer with handle " << rec.handle;
-            if (rec.inUse) {
-                LOG(WARNING) << "Can't release buffer due to remote ownership";
-                continue;
-            }
-            auto result = mapper.unlock(rec.handle);
-            if (result != ::android::OK)
-            {
-                LOG(ERROR) << "Failed to unlock buffer " << rec.handle << ": "
-                           << ::android::statusToString(result);
-            }
-            alloc.free(rec.handle);
-            rec.handle = nullptr;
-        }
-
-    } else {
-        LOG(DEBUG) << "No buffers to release";
-    }
-
-    mFramesAllowed = 0;
 
     return ScopedAStatus::ok();
 }
@@ -257,7 +226,7 @@ ScopedAStatus EvsV4lCameraZeroCopy::getPhysicalCameraInfo([[maybe_unused]] const
 }
 
 ScopedAStatus EvsV4lCameraZeroCopy::doneWithFrame(const std::vector<BufferDesc>& buffers) {
-    LOG(INFO) << __FUNCTION__;
+    LOG(VERBOSE) << __FUNCTION__;
 
     for (const auto& buffer : buffers) {
         doneWithFrame_impl(buffer);
@@ -548,7 +517,6 @@ unsigned EvsV4lCameraZeroCopy::increaseAvailableFrames_Locked(unsigned numToAdd)
     ::android::GraphicBufferAllocator& alloc(::android::GraphicBufferAllocator::get());
 
     unsigned added = 0;
-    //if (!mZeroCopy) {
     while (added < numToAdd) {
         unsigned pixelsPerLine = 0;
         buffer_handle_t memHandle = nullptr;
@@ -596,7 +564,6 @@ unsigned EvsV4lCameraZeroCopy::increaseAvailableFrames_Locked(unsigned numToAdd)
         ++mFramesAllowed;
         ++added;
     }
-    //}
 
     return added;
 }
@@ -750,13 +717,14 @@ void EvsV4lCameraZeroCopy::forwardFrame(imageBuffer* pV4lBuff, void* pData) {
         }
 
         if (flag) {
-            LOG(INFO) << "Delivered " << memHandle << " as id " << bufferDesc.bufferId;
+            LOG(VERBOSE) << "Delivered " << memHandle << " as id " << bufferDesc.bufferId;
         } else {
             // This can happen if the client dies and is likely unrecoverable.
             // To avoid consuming resources generating failing calls, we stop sending
             // frames.  Note, however, that the stream remains in the "STREAMING" state
             // until cleaned up on the main thread.
             LOG(ERROR) << "Frame delivery call failed in the transport layer.";
+            LOG(ERROR) << "for buffer " << idx << " with handle " << memHandle;
 
             // Since we didn't actually deliver it, mark the frame as available
             std::lock_guard<std::mutex> lock(mAccessLock);
