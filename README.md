@@ -102,12 +102,19 @@ More info:
 
 ## Implementation Details
 
-The original HAL, application, and manager were modified to support the `rcar-vivid` driver and enable zero-copy buffer handling.
+Current implementation contains zerocopy and nonzerocopy HAL builds. By default, it is zerocopy. To test non-zerocopy, comment out in Android.bp:
 
-Originally, buffer copies were performed inside the HAL, which negatively impacted performance. With the current implementation, the EVS services use approximately **30% CPU** for 4-camera preview.
+```
+"-DUSE_ZEROCOPY",
+```
+
+The original HAL, application, and manager were modified to support the `rcar-vivid` driver and enable zerocopy/non-zerocopy buffer handling.
+
+Originally, buffer copies were performed inside the HAL, which negatively impacted performance. With the current zerocopy implementation, the EVS services use approximately **30% CPU** for 4-camera preview.
 
 The `evs_hal` allocates buffers from a dedicated memory area shared with CR52. This area is limited in size. Because of that, in the current implementation `importBuffers()` does **not** use external buffers — it allocates its own instead.
 
+**Note: Interaction with zerocopy HAL may lead to out-of-memory allocations from shared memory (if clients are holding buffers, for example), since the size of it is limited. External buffering is also not supported in the original way, as described above. All these problems are not present in non-zerocopy HAL.**
 
 ---
 
@@ -120,6 +127,9 @@ The implementation was verified using the `VtsHalEvsTargetTest`.
 [==========] 40 tests from 1 test suite ran. (239099 ms total)
 [  PASSED  ] 40 tests.
 ```
+
+Sometimes, test could fail due to laggs in interaction with drivers.
+ 
 
 To reduce memory usage, one change was applied:
 
