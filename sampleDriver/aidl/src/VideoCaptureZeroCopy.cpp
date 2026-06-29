@@ -122,16 +122,33 @@ bool VideoCaptureZeroCopy::open(const char *deviceName, const int32_t width, con
         return false;
     }
 
+    struct v4l2_streamparm parm;
+    memset(&parm, 0, sizeof(parm));
+    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    parm.parm.capture.timeperframe.numerator   = 1;
+    parm.parm.capture.timeperframe.denominator = 30;
+
+    if (ioctl(mDeviceFd,  VIDIOC_S_PARM, &parm) < 0) {
+         PLOG(ERROR) << "FPS SET FAIL VIDIOC_S_PARM: " << strerror(errno);
+    }
+
     // Set our desired output format
     v4l2_format format;
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     format.fmt.pix.pixelformat = sDefaultV4LFormat;
-    format.fmt.pix.width = width;
-    format.fmt.pix.height = height;
+    format.fmt.pix.width = sDefaultWidth;
+    format.fmt.pix.height = sDefaultHeight;
+    format.fmt.pix.field       = V4L2_FIELD_NONE;
+    format.fmt.pix.bytesperline = sDefaultStride*sBPPforDefaultFormat;
     LOG(INFO) << "Requesting format: " << ((char *)&format.fmt.pix.pixelformat)[0]
               << ((char *)&format.fmt.pix.pixelformat)[1] << ((char *)&format.fmt.pix.pixelformat)[2]
               << ((char *)&format.fmt.pix.pixelformat)[3] << "(" << std::hex << std::setw(8)
               << format.fmt.pix.pixelformat << ")";
+
+    LOG(INFO) << "Requesting output format:  "
+                  << "fmt=0x" << std::hex << format.fmt.pix.pixelformat << ", " << std::dec
+                  << format.fmt.pix.width << " x " << format.fmt.pix.height
+                  << ", pitch=" << format.fmt.pix.bytesperline;
 
     if (ioctl(mDeviceFd, VIDIOC_S_FMT, &format) < 0)
     {
@@ -181,6 +198,44 @@ void VideoCaptureZeroCopy::close()
     }
 }
 
+static bool getDmaBuf(const native_handle_t* handle, int* outFd, size_t* outSize) {
+    if (handle == nullptr || handle->numFds < 1) {
+        LOG(ERROR) << "getDmaBuf: bad handle, numFds="
+                   << (handle ? handle->numFds : -1);
+        return false;
+    }
+
+    int bestFd = -1;
+    off_t bestSize = 0;
+
+    // Several fds may be packed in the handle (buffer + metadata).
+    // Pick the largest one — the real pixel buffer dwarfs metadata fds.
+    for (int i = 0; i < handle->numFds; ++i) {
+        int fd = handle->data[i];
+        if (fd < 0) {
+            continue;
+        }
+        off_t sz = lseek(fd, 0, SEEK_END);
+        if (sz <= 0) {
+            // not a regular/seekable dma-buf, or empty — skip
+            continue;
+        }
+        if (sz > bestSize) {
+            bestSize = sz;
+            bestFd = fd;
+        }
+    }
+
+    if (bestFd < 0) {
+        LOG(ERROR) << "getDmaBuf: no usable dma-buf fd in handle";
+        return false;
+    }
+
+    *outFd = bestFd;
+    *outSize = static_cast<size_t>(bestSize);
+    return true;
+}
+
 bool VideoCaptureZeroCopy::startStream(const std::vector<BufferRecord>& buffers, VideoCaptureCallback callback)
 {
     LOG(INFO) << "Starting streaming from video device "
@@ -200,7 +255,7 @@ bool VideoCaptureZeroCopy::startStream(const std::vector<BufferRecord>& buffers,
     // Tell the L4V2 driver to prepare our streaming buffers
     v4l2_requestbuffers bufrequest;
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    bufrequest.memory = V4L2_MEMORY_USERPTR;
+    bufrequest.memory = V4L2_MEMORY_DMABUF;
     bufrequest.count = buffers.size();
     if (ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest) < 0)
     {
@@ -215,29 +270,22 @@ bool VideoCaptureZeroCopy::startStream(const std::vector<BufferRecord>& buffers,
     for (int i = 0; i < mNumBuffers; ++i)
     {
 
-        void *targetPixels = nullptr;
-        ::android::GraphicBufferMapper &mapper = ::android::GraphicBufferMapper::get();
-        auto result =
-            mapper.lock(buffers[i].handle, sDefaultUsage,
-                        ::android::Rect(mWidth, mHeight),
-                        (void **)&targetPixels);
-        if (!targetPixels)
-        {
-            // TODO(b/145457727): When EvsHidlTest::CameraToDisplayRoundTrip
-            // test case was repeatedly executed, EVS occasionally fails to map
-            // a buffer.
-            LOG(ERROR) << "Camera failed to gain access to image buffer for writing - "
-                       << " status: " << ::android::statusToString(result);
+        int    dmabuf_fd = -1;
+        size_t dmabuf_sz = 0;
+
+        if (!getDmaBuf(buffers[i].handle, &dmabuf_fd, &dmabuf_sz)) {
+            LOG(INFO) << "Unable to get DMA buffer from the native handle";
             return false;
         }
-        LOG(INFO) << "Buffer n=" << i << " mapped at " << targetPixels;
-        // Get the information on the buffer that was created for us
+        LOG(INFO) << "DMA buffer fd = " << dmabuf_fd << " size = " << std::dec << dmabuf_sz;
+
         memset(&mBufferInfos[i], 0, sizeof(v4l2_buffer));
+
         mBufferInfos[i].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        mBufferInfos[i].memory = V4L2_MEMORY_USERPTR;
-        mBufferInfos[i].m.userptr = reinterpret_cast<unsigned long>(targetPixels);
+        mBufferInfos[i].memory = V4L2_MEMORY_DMABUF;
         mBufferInfos[i].index = i;
-        mBufferInfos[i].length = sBPPforDefaultFormat * sDefaultHeight * sDefaultWidth;
+        mBufferInfos[i].length = sBPPforDefaultFormat * sDefaultHeight * sDefaultStride;
+
         LOG(INFO) << "Buffer " << i << " length = " << std::dec
                   << mBufferInfos[i].length;
         if (ioctl(mDeviceFd, VIDIOC_QUERYBUF, &mBufferInfos[i]) < 0)
@@ -246,25 +294,17 @@ bool VideoCaptureZeroCopy::startStream(const std::vector<BufferRecord>& buffers,
             return false;
         }
 
-        LOG(DEBUG) << "Buffer description:";
-        LOG(DEBUG) << "  offset: " << mBufferInfos[i].m.offset;
-        LOG(DEBUG) << "  length: " << mBufferInfos[i].length;
-        LOG(DEBUG) << "  flags : " << std::hex << mBufferInfos[i].flags;
+        LOG(INFO) << "Buffer description:";
+        LOG(INFO) << "  offset: " << mBufferInfos[i].m.offset;
+        LOG(INFO) << "  length: " << mBufferInfos[i].length;
 
-        unsigned int length = mBufferInfos[i].length;
-        mPixelBuffers[i] = targetPixels;
-        memset(mPixelBuffers[i], 0, mWidth * mHeight * sBPPforDefaultFormat);
-        LOG(DEBUG) << "Buffer mapped at " << mPixelBuffers[i];
-        memset(&mBufferInfos[i], 0, sizeof(v4l2_buffer));
-        mBufferInfos[i].type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        mBufferInfos[i].memory = V4L2_MEMORY_USERPTR;
-        mBufferInfos[i].m.userptr = reinterpret_cast<unsigned long>(targetPixels);
-        mBufferInfos[i].index = i;
-        mBufferInfos[i].length = length;
+        mBufferInfos[i].type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        mBufferInfos[i].memory = V4L2_MEMORY_DMABUF;
+        mBufferInfos[i].index  = i;
+        mBufferInfos[i].m.fd   = dmabuf_fd;
+        mBufferInfos[i].length = dmabuf_sz;
 
-        // Queue the first capture buffer
-        if (ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfos[i]) < 0)
-        {
+        if (ioctl(mDeviceFd, VIDIOC_QBUF, &mBufferInfos[i]) < 0) {
             PLOG(ERROR) << "VIDIOC_QBUF failed";
             return false;
         }
@@ -328,7 +368,7 @@ void VideoCaptureZeroCopy::stopStream()
     // Tell the L4V2 driver to release our streaming buffers
     v4l2_requestbuffers bufrequest;
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    bufrequest.memory = V4L2_MEMORY_USERPTR;
+    bufrequest.memory = V4L2_MEMORY_DMABUF;
     bufrequest.count = 0;
     ioctl(mDeviceFd, VIDIOC_REQBUFS, &bufrequest);
 
@@ -377,7 +417,7 @@ void VideoCaptureZeroCopy::collectFrames()
 
     while (mRunMode == RUN)
     {
-        struct v4l2_buffer buf = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE, .memory = V4L2_MEMORY_USERPTR};
+        struct v4l2_buffer buf = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE, .memory = V4L2_MEMORY_DMABUF};
         {
 
             LOG(VERBOSE) << "VIDIOC_DQBUF";

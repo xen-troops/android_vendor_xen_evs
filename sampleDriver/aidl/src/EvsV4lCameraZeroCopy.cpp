@@ -99,12 +99,6 @@ void EvsV4lCameraZeroCopy::shutdown() {
             if (rec.inUse) {
                 LOG(WARNING) << "Releasing buffer despite remote ownership";
             }
-            auto result = mapper.unlock(rec.handle);
-            if (result != ::android::OK)
-            {
-                LOG(ERROR) << "Failed to unlock buffer " << rec.handle << ": "
-                           << ::android::statusToString(result);
-            }
             alloc.free(rec.handle);
             rec.handle = nullptr;
         }
@@ -601,12 +595,6 @@ unsigned EvsV4lCameraZeroCopy::decreaseAvailableFrames_Locked(unsigned numToRemo
             // Release buffer and update the record so we can recognize it as "empty"
             if ((rec.inUse == false) && (mStream != nullptr)) {
                 continue;
-            }
-            auto result = mapper.unlock(rec.handle);
-            if (result != ::android::OK)
-            {
-                LOG(ERROR) << "Failed to unlock buffer " << rec.handle << ": "
-                           << ::android::statusToString(result);
             }
             alloc.free(rec.handle);
             rec.handle = nullptr;
