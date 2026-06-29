@@ -18,7 +18,7 @@ package {
 
 cc_binary {
     name: "android.hardware.automotive.evs-xt",
-    overrides: ["android.hardware.automotive.evs-default"],
+    overrides: ["android.hardware.automotive.evs-default", "android.hardware.automotive.evs-v4l2"],
     defaults: ["android.hardware.graphics.common-ndk_static"],
     vendor: true,
     relative_install_path: "hw",
