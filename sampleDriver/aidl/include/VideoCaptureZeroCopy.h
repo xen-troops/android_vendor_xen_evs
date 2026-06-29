@@ -109,7 +109,7 @@ private:
     constexpr static uint32_t sDefaultStride = 2048;
     constexpr static uint32_t sDefaultFormat = HAL_PIXEL_FORMAT_BGRA_8888;
     constexpr static uint64_t sDefaultUsage = GRALLOC_USAGE_HW_CAMERA_READ | GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_FB | GRALLOC_USAGE_SW_READ_RARELY | GRALLOC_USAGE_SW_WRITE_OFTEN;
-    constexpr static uint32_t sDefaultV4LFormat = V4L2_PIX_FMT_XR24;  // Default V4L2 format
+    constexpr static uint32_t sDefaultV4LFormat = V4L2_PIX_FMT_ARGB32;  // Default V4L2 format
     constexpr static uint32_t sBPPforDefaultFormat = 4;  // Bytes per pixel for default format
 };
 
