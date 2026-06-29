@@ -103,7 +103,7 @@ private:
     std::vector<buffer_handle_t> mRegisteredBuffers;
     std::atomic<bool> mBuffersRegistered = false;
     mutable std::mutex mAccessLock;
-    constexpr static uint32_t sDefaultBufferCount = 2;
+    constexpr static uint32_t sDefaultBufferCount = 3;
     constexpr static uint32_t sDefaultWidth = 1936;
     constexpr static uint32_t sDefaultHeight = 1552;
     constexpr static uint32_t sDefaultStride = 2048;

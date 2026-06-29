@@ -40,7 +40,7 @@ public:
 
     StreamHandler(
             const std::shared_ptr<aidl::android::hardware::automotive::evs::IEvsCamera>& cameraObj,
-            uint32_t numBuffers = 2, bool useOwnBuffers = false,
+            uint32_t numBuffers = 3, bool useOwnBuffers = false,
             android_pixel_format_t format = HAL_PIXEL_FORMAT_BGRA_8888, int32_t width = 640,
             int32_t height = 360);
     void shutdown();

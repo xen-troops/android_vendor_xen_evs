@@ -175,7 +175,7 @@ VideoTex* createVideoTexture(const std::shared_ptr<IEvsEnumerator>& pEnum, const
 
     // Initialize the stream that will help us update this texture's contents
     pStreamHandler =
-            ndk::SharedRefBase::make<StreamHandler>(pCamera, /* numBuffers= */ 2, useExternalMemory,
+            ndk::SharedRefBase::make<StreamHandler>(pCamera, /* numBuffers= */ 3, useExternalMemory,
                                                     format, streamCfg->width, streamCfg->height);
     if (!pStreamHandler) {
         LOG(ERROR) << "Failed to allocate FrameHandler";
