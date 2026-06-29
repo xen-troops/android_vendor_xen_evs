@@ -4,9 +4,8 @@ This project provides an Android Exterior View System (EVS) implementation using
 
 It implements the Android EVS AIDL HAL as described in the official documentation:  
 https://source.android.com/docs/automotive/camera-hal  
-for Android 14.
+for Android 16.
 
-The source code is based on the EVS portion of the [packages/services/Car](https://android.googlesource.com/platform/packages/services/Car/+/refs/tags/android-14.0.0_r21/cpp/evs/) project.
 
 ### Components
 
@@ -118,41 +117,9 @@ The `evs_hal` allocates buffers from a dedicated memory area shared with CR52. T
 
 ---
 
-## VTS Testing
-
-The implementation was verified using the `VtsHalEvsTargetTest`.  
-
-```
-[----------] Global test environment tear-down
-[==========] 40 tests from 1 test suite ran. (239099 ms total)
-[  PASSED  ] 40 tests.
-```
-
-Sometimes, test could fail due to laggs in interaction with drivers.
- 
-
-To reduce memory usage, one change was applied:
-
-```diff
-diff --git a/automotive/evs/aidl/vts/FrameHandler.cpp b/automotive/evs/aidl/vts/FrameHandler.cpp
-index e51be67..a277fc5 100644
---- a/automotive/evs/aidl/vts/FrameHandler.cpp
-+++ b/automotive/evs/aidl/vts/FrameHandler.cpp
-@@ -283,7 +283,7 @@ bool FrameHandler::copyBufferContents(const BufferDesc& tgtBuffer, const BufferD
-             static_cast<android::PixelFormat>(pTgtDesc->format), pTgtDesc->layers,
-             static_cast<uint64_t>(pTgtDesc->usage), pTgtDesc->stride);
-
--    buffer_handle_t source = ::android::dupFromAidl(srcBuffer.buffer.handle);
-+    buffer_handle_t source = ::android::makeFromAidl(srcBuffer.buffer.handle);
-     ::android::sp<android::GraphicBuffer> src = new android::GraphicBuffer(
-             source, android::GraphicBuffer::CLONE_HANDLE, pSrcDesc->width, pSrcDesc->height,
-             static_cast<android::PixelFormat>(pSrcDesc->format), pSrcDesc->layers,
-```
----
-
 ## Known issues
 
+* No multicamera supported for now
 * Domain reboot/destroy may fail
 * Start/stop streaming may produce a lot of error messages
-* Stuttering
-* Very first camera device open may take a lot of time
+* Camera device open may take a lot of time ~10+sec
