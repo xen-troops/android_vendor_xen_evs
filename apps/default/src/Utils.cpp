@@ -16,6 +16,8 @@
 
 #include "Utils.h"
 
+#include <algorithm>
+
 #include <aidl/android/hardware/automotive/evs/BufferDesc.h>
 #include <aidlcommonsupport/NativeHandle.h>
 #include <android-base/logging.h>

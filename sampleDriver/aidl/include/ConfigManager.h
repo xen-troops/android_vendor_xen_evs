@@ -25,6 +25,8 @@
 
 #include <tinyxml2.h>
 
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
